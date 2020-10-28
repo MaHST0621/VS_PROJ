@@ -98,9 +98,19 @@ string cut_sendbuff(string s)
 
 DWORD WINAPI ClientThread(LPVOID ipParameter)
 {
+
     SOCKET ClientScoket = (SOCKET)ipParameter;
     int RET = 0;
-    //初始化 recvBuffer
+    
+    strcpy(SendBuffer, "现在服务器在线人员为：[");
+    for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
+    {
+        strcat(SendBuffer, iter->first.data());
+        strcat(SendBuffer, "; ");
+    }
+    strcat(SendBuffer, "]");
+    send(ClientScoket, SendBuffer, sizeof(SendBuffer), 0);
+    memset(SendBuffer, 0x00, sizeof(SendBuffer));
     while (true) {
         memset(RecvBuffer, 0x00, sizeof(RecvBuffer));
         RET = recv(ClientScoket, RecvBuffer, MAX_PATH, 0);
