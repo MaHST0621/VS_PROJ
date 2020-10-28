@@ -338,3 +338,9 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/Socket-server/Socket-server/Socket-server.vcxproj.filters
+/Socket-server/Socket-server/Socket-server.vcxproj
+/Socket-server/Socket-server.sln
+/Socket-client/Socket-client.sln
+/Socket-client/Socket-client/Socket-client.vcxproj.filters
+/Socket-client/Socket-client/Socket-client.vcxproj
