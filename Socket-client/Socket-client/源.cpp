@@ -22,7 +22,7 @@ DWORD WINAPI Client_recv(LPVOID ipParameter)
             cout << "failed,exit" << endl;
             break;
         }
-        printf("客户端发来消息：%s", RecvBuffer);
+        printf(RecvBuffer);
         cout << endl;
         memset(RecvBuffer, 0x00, MAX_PATH);
     }
@@ -77,7 +77,8 @@ int main(void)
         if (RET == SOCKET_ERROR)
         {
             cout << "send to error" << endl;
-        };
+        }
+
     }
 
     return 0;
