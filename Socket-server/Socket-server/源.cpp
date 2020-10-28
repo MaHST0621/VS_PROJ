@@ -98,10 +98,28 @@ string cut_sendbuff(string s)
 
 DWORD WINAPI ClientThread(LPVOID ipParameter)
 {
-
     SOCKET ClientScoket = (SOCKET)ipParameter;
     int RET = 0;
-    
+   
+    recv(ClientScoket, RecvBuffer, sizeof(RecvBuffer), 0);
+    Insert_Pair = list_socket.insert(map<string, SOCKET>::value_type(RecvBuffer, ClientScoket));
+    if (Insert_Pair.second == true)
+        {
+        for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
+        {
+            strcpy(SendBuffer, "欢迎");
+            strcat(SendBuffer, RecvBuffer);
+            strcat(SendBuffer, "加入服务器");
+            send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+            cout << iter->first << " " << endl;
+        }
+            memset(SendBuffer, 0x00, MAX_PATH);
+        }
+    else
+    {
+        send(ClientScoket, "你的用户名已被使用请重新链接,谢谢", 34, 0);
+        return 0;
+    }
     strcpy(SendBuffer, "现在服务器在线人员为：[");
     for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
     {
@@ -118,13 +136,16 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
         {
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
             {
-                strcpy(SendBuffer, find_key(ClientScoket).data());
-                strcat(SendBuffer, "用户掉线");
-                send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+                while (iter->second != ClientScoket) {
+                    strcpy(SendBuffer, find_key(ClientScoket).data());
+                    strcat(SendBuffer, "用户掉线");
+                    send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+
+                }
+                
             }
             memset(SendBuffer, 0x00, MAX_PATH);
-        }
-        else if (RecvBuffer == "tui chu")
+        }else if (RecvBuffer == "")
         {
             cout << "i am called";
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
@@ -219,28 +240,7 @@ int main(void)
             cout << "accept failed";
             break;
         }
-        else
-        {
-            recv(clientScoket, RecvBuffer, sizeof(RecvBuffer), 0);
-            Insert_Pair = list_socket.insert(map<string, SOCKET>::value_type(RecvBuffer, clientScoket));
-            if (Insert_Pair.second == true)
-            {
-                for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
-                {
-                    strcpy(SendBuffer, "欢迎");
-                    strcat(SendBuffer, RecvBuffer);
-                    strcat(SendBuffer, "加入服务器");
-                    send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
-                    cout << iter->first << " " << endl;
-                }
-                memset(SendBuffer, 0x00, MAX_PATH);
-            }
-            else
-            {
-                send(clientScoket, "你的用户名已被使用请重新链接,谢谢", 34, 0);
-                closesocket(clientScoket);
-            }
-        }
+        
         hThread_1 = CreateThread(NULL, 0, ClientThread, (LPVOID)clientScoket, 0, NULL);
         if (hThread_1 == NULL)
         {
