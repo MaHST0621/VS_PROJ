@@ -14,7 +14,7 @@ char RecvBuffer[MAX_PATH] = { '\0 ' };
 char SendBuffer[MAX_PATH] = { '\0' };
 
 
-//创建线程
+//通过该SOCKET映射出该客户端的昵称
 string find_key(SOCKET s)
 {
     for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
@@ -24,7 +24,7 @@ string find_key(SOCKET s)
     }
 
 }
-
+//从RECVBUFF中提取接受对象昵称
 vector<string> find_SendId(string s)
 {
     vector<string> result;
@@ -61,9 +61,40 @@ vector<string> find_SendId(string s)
     }
     return result;
 }
+//string的反转函数
+string Reverse(string s, int n) {
+    for (int i = 0, j = n - 1; i < j; i++, j--) {
+        char c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+    return s;
+}
+//提取RECVBUFF中的消息部分
+string cut_sendbuff(string s)
+{
 
+    string result_0("");
+    string temp("");
+    for (int i = s.size() - 1; i >= 0; i--)
+    {
 
+        if (s[i] == ':')
+        {
+            result_0 = temp;
+            temp = "";
+            break;
 
+        }
+        else
+        {
+            temp += s[i];
+        }
+    }
+    result_0 = Reverse(result_0, result_0.size());
+
+    return result_0;
+}
 
 DWORD WINAPI ClientThread(LPVOID ipParameter)
 {
@@ -75,18 +106,40 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
         RET = recv(ClientScoket, RecvBuffer, MAX_PATH, 0);
         if (RET == 0 || RET == SOCKET_ERROR)
         {
-            cout << "failed,exit" << endl;
-            break;
+            for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
+            {
+                strcpy(SendBuffer, find_key(ClientScoket).data());
+                strcat(SendBuffer, "用户掉线");
+                send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+            }
+            memset(SendBuffer, 0x00, MAX_PATH);
         }
-
-        cout << find_key(ClientScoket) << " :  " << RecvBuffer << endl;
+        else if (RecvBuffer == "tui chu")
+        {
+            cout << "i am called";
+            for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
+            {
+                strcpy(SendBuffer,find_key(ClientScoket).data() );
+                strcat(SendBuffer, "用户已经成功退出");
+                send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+            }
+            memset(SendBuffer, 0x00, MAX_PATH);
+        }
+        else {
+            vector<string> result = find_SendId(RecvBuffer);
+            strcpy(SendBuffer, "[");
+            strcat(SendBuffer, find_key(ClientScoket).data());
+            strcat(SendBuffer, "]:  ");
+            strcat(SendBuffer, cut_sendbuff(RecvBuffer).data());
+            for (int i = 0; i < result.size(); i++)
+            {
+                send(list_socket[result[i]], SendBuffer, sizeof(SendBuffer), 0);
+            }
+            memset(SendBuffer, 0x00, MAX_PATH);
+        }
     }
 
-
-
     return 0;
-
-
 }
 
 
