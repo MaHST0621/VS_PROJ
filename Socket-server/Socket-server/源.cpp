@@ -111,7 +111,6 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
             strcat(SendBuffer, RecvBuffer);
             strcat(SendBuffer, "加入服务器");
             send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
-            cout << iter->first << " " << endl;
         }
             memset(SendBuffer, 0x00, MAX_PATH);
         }
@@ -132,6 +131,7 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
     while (true) {
         memset(RecvBuffer, 0x00, sizeof(RecvBuffer));
         RET = recv(ClientScoket, RecvBuffer, MAX_PATH, 0);
+        vector<string> result = find_SendId(RecvBuffer);
         if (RET == 0 || RET == SOCKET_ERROR)
         {
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
@@ -145,19 +145,30 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
                 
             }
             memset(SendBuffer, 0x00, MAX_PATH);
-        }else if (RecvBuffer == "")
+        }else if (strcmp(RecvBuffer, "quit")==0)
         {
-            cout << "i am called";
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
             {
                 strcpy(SendBuffer,find_key(ClientScoket).data() );
                 strcat(SendBuffer, "用户已经成功退出");
                 send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
             }
+            closesocket(ClientScoket);
             memset(SendBuffer, 0x00, MAX_PATH);
         }
-        else {
-            vector<string> result = find_SendId(RecvBuffer);
+        else if (strcmp(RecvBuffer, result[0].data()) == 0)
+        {
+            strcpy(SendBuffer, "[");
+            strcat(SendBuffer, find_key(ClientScoket).data());
+            strcat(SendBuffer, "]:  ");
+            strcat(SendBuffer, cut_sendbuff(RecvBuffer).data());
+            for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
+            {
+                send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+            }
+            memset(SendBuffer, 0x00, MAX_PATH);
+        }else {
+            
             strcpy(SendBuffer, "[");
             strcat(SendBuffer, find_key(ClientScoket).data());
             strcat(SendBuffer, "]:  ");
