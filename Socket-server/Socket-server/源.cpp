@@ -149,14 +149,20 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
         {
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
             {
-                strcpy(SendBuffer,find_key(ClientScoket).data() );
-                strcat(SendBuffer, "用户已经成功退出");
-                send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+                if (iter->second != ClientScoket) {
+                    strcpy(SendBuffer, find_key(ClientScoket).data());
+                    strcat(SendBuffer, "用户已经成功退出");
+                    send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
+
+                }
+                else
+                {
+                    send(ClientScoket, "您已经成功退出", 20, 0);
+                }
             }
             closesocket(ClientScoket);
             memset(SendBuffer, 0x00, MAX_PATH);
-        }
-        else if (strcmp(RecvBuffer, result[0].data()) == 0)
+        }else if (strcmp("all", result[0].data()) == 0)
         {
             strcpy(SendBuffer, "[");
             strcat(SendBuffer, find_key(ClientScoket).data());
@@ -168,16 +174,29 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
             }
             memset(SendBuffer, 0x00, MAX_PATH);
         }else {
-            
-            strcpy(SendBuffer, "[");
-            strcat(SendBuffer, find_key(ClientScoket).data());
-            strcat(SendBuffer, "]:  ");
-            strcat(SendBuffer, cut_sendbuff(RecvBuffer).data());
             for (int i = 0; i < result.size(); i++)
             {
-                send(list_socket[result[i]], SendBuffer, sizeof(SendBuffer), 0);
+                memset(SendBuffer, sizeof(SendBuffer), 0);
+                strcpy(SendBuffer, "[");
+                strcat(SendBuffer, find_key(ClientScoket).data());
+                strcat(SendBuffer, "]:  ");
+                strcat(SendBuffer, cut_sendbuff(RecvBuffer).data());
+                cout << result[i] << endl;
+                iter = list_socket.find(result[i]);
+                if (iter != list_socket.end())
+                {
+                    send(list_socket[result[i]], SendBuffer, sizeof(SendBuffer), 0);
+                }
+                else
+                {
+                    memset(SendBuffer, sizeof(SendBuffer), 0);
+                    strcpy(SendBuffer, result[i].data());
+                    strcat(SendBuffer, " 该用户不存在");
+                    send(ClientScoket, SendBuffer, sizeof(SendBuffer), 0);
+                }
             }
             memset(SendBuffer, 0x00, MAX_PATH);
+            
         }
     }
 
