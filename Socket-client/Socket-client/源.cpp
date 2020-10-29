@@ -4,7 +4,7 @@
 #include <string.h>
 using namespace std;
 #pragma comment(lib,"ws2_32.lib")
-
+//RECV线程函数定义
 DWORD WINAPI Client_recv(LPVOID ipParameter)
 {
     int RET;
@@ -19,7 +19,7 @@ DWORD WINAPI Client_recv(LPVOID ipParameter)
         RET = recv(CclientScoket, RecvBuffer, MAX_PATH, 0);
         if (RET == 0 || RET == SOCKET_ERROR)
         {
-            cout << "failed,exit" << endl;
+            cout << "服务器相应失败，退出" << endl;
             break;
         }
         printf(RecvBuffer);
@@ -28,7 +28,7 @@ DWORD WINAPI Client_recv(LPVOID ipParameter)
     }
     return 0;
 }
-
+//主函数
 int main(void)
 {
     WSADATA     WSA;
@@ -70,15 +70,19 @@ int main(void)
     {
         cout << "creat thread_1 failed" << endl;
     }
+    \
     while (true)
     {
         cin.getline(SendBuffer, sizeof(SendBuffer));
         RET = send(clientScoket, SendBuffer, (int)strlen(SendBuffer), 0);
-        if (RET == SOCKET_ERROR)
+        if (strcmp(SendBuffer, "quit") == 0)
+        {
+            return 0;
+        }else if (RET == SOCKET_ERROR)
         {
             cout << "send to error" << endl;
         }
-
+        
     }
 
     return 0;
