@@ -9,7 +9,6 @@ using namespace std;
 map<string, SOCKET>list_socket;
 pair<map<string, SOCKET>::iterator, bool> Insert_Pair;
 map<string, SOCKET>::iterator iter;
-#define MAX_BUFF 2040;
 char RecvBuffer[MAX_PATH] = { '\0 ' };
 char SendBuffer[MAX_PATH] = { '\0' };
 
@@ -95,12 +94,12 @@ string cut_sendbuff(string s)
 
     return result_0;
 }
-
+//client线程定义
 DWORD WINAPI ClientThread(LPVOID ipParameter)
 {
     SOCKET ClientScoket = (SOCKET)ipParameter;
     int RET = 0;
-   
+   //判断该昵称是否成功生成：如果该昵称在map里已存在那么会insert失败。
     recv(ClientScoket, RecvBuffer, sizeof(RecvBuffer), 0);
     Insert_Pair = list_socket.insert(map<string, SOCKET>::value_type(RecvBuffer, ClientScoket));
     if (Insert_Pair.second == true)
@@ -119,6 +118,8 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
         send(ClientScoket, "你的用户名已被使用请重新链接,谢谢", 34, 0);
         return 0;
     }
+
+
     strcpy(SendBuffer, "现在服务器在线人员为：[");
     for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
     {
@@ -128,6 +129,9 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
     strcat(SendBuffer, "]");
     send(ClientScoket, SendBuffer, sizeof(SendBuffer), 0);
     memset(SendBuffer, 0x00, sizeof(SendBuffer));
+
+
+
     while (true) {
         memset(RecvBuffer, 0x00, sizeof(RecvBuffer));
         RET = recv(ClientScoket, RecvBuffer, MAX_PATH, 0);
@@ -147,20 +151,14 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
             memset(SendBuffer, 0x00, MAX_PATH);
         }else if (strcmp(RecvBuffer, "quit")==0)
         {
+            strcpy(SendBuffer, find_key(ClientScoket).data());
+            strcat(SendBuffer, "用户已经成功退出");
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
             {
-                if (iter->second != ClientScoket) {
-                    strcpy(SendBuffer, find_key(ClientScoket).data());
-                    strcat(SendBuffer, "用户已经成功退出");
-                    send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
-
-                }
-                else
-                {
-                    send(ClientScoket, "您已经成功退出", 20, 0);
-                }
+                send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
             }
             closesocket(ClientScoket);
+            list_socket.erase(find_key(ClientScoket));
             memset(SendBuffer, 0x00, MAX_PATH);
         }else if (strcmp("all", result[0].data()) == 0)
         {
@@ -202,29 +200,11 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
 
     return 0;
 }
-
-
-
-/*void client_thread(SOCKET client_sock, SOCKADDR_IN b)
-{
-    int RET = 0;
-    char recv_buff[1024];
-    while (true)
-    {
-        memset(recv_buff, 0, sizeof(recv_buff));
-        RET = recv(client_sock, recv_buff, 1024, 0);
-        if (RET == 0 || RET == SOCKET_ERROR)
-        {
-            cout << "faild exit" << endl;
-        }
-    }
-    cout << inet_ntoa(b.sin_addr) << "发送的消息为：" << recv_buff << endl;
-}
-*/
+//主函数
 int main(void)
 {
     WSADATA     WSA;
-    SOCKET      severScoket, clientScoket;
+    SOCKET      severSocket, clientScoket;
     struct      sockaddr_in  LocalAddr, clientAddr;
     int         AddrLen = 0;
     HANDLE      hThread_1 = NULL;
@@ -237,8 +217,8 @@ int main(void)
         return -1;
     }
     //creat socket
-    severScoket = socket(AF_INET, SOCK_STREAM, 0);
-    if (severScoket == INVALID_SOCKET)
+    severSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (severSocket == INVALID_SOCKET)
     {
         cout << "creat failed" << GetLastError() << endl;
         return -1;
@@ -248,13 +228,13 @@ int main(void)
     LocalAddr.sin_port = htons(4000);
     memset(LocalAddr.sin_zero, 0x00, 8);
     //bind socket
-    RET = bind(severScoket, (SOCKADDR*)&LocalAddr, sizeof(LocalAddr));
+    RET = bind(severSocket, (SOCKADDR*)&LocalAddr, sizeof(LocalAddr));
     if (RET != 0)
     {
         cout << "bind failed";
         return -1;
     }
-    RET = listen(severScoket, 5);
+    RET = listen(severSocket, 5);
     if (RET != 0)
     {
         cout << "listen failed";
@@ -264,7 +244,7 @@ int main(void)
     while (true)
     {
         AddrLen = sizeof(clientAddr);
-        clientScoket = accept(severScoket, (SOCKADDR*)&clientAddr, &AddrLen);
+        clientScoket = accept(severSocket, (SOCKADDR*)&clientAddr, &AddrLen);
         if (clientScoket == INVALID_SOCKET)
         {
             cout << "accept failed";
@@ -278,7 +258,7 @@ int main(void)
         }
         CloseHandle(hThread_1);
     }
-    closesocket(severScoket);
+    closesocket(severSocket);
     closesocket(clientScoket);
     WSACleanup();
     return 0;
