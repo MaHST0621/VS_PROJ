@@ -136,7 +136,7 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
         {
             for (iter = list_socket.begin(); iter != list_socket.end(); iter++)
             {
-                while (iter->second != ClientScoket) {
+                while (iter->second == ClientScoket) {
                     strcpy(SendBuffer, find_key(ClientScoket).data());
                     strcat(SendBuffer, "ÓÃ»§µôÏß");
                     send(iter->second, SendBuffer, sizeof(SendBuffer), 0);
