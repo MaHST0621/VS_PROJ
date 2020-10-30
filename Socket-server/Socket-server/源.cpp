@@ -148,6 +148,7 @@ DWORD WINAPI ClientThread(LPVOID ipParameter)
                 }
                 
             }
+            list_socket.erase(find_key(ClientScoket));
             memset(SendBuffer, 0x00, MAX_PATH);
         }else if (strcmp(RecvBuffer, "quit")==0)
         {
@@ -256,10 +257,8 @@ int main(void)
         {
             cout << "creat thread_1 failed" << endl;
         }
-        CloseHandle(hThread_1);
     }
     closesocket(severSocket);
-    closesocket(clientScoket);
     WSACleanup();
     return 0;
 }
