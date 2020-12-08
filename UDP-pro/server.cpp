@@ -72,7 +72,6 @@ void Rdt::make_pak(int id,char* buf)
     /* cout<<endl; */
 
     cksum((u_short*)buf,getlen_buf(buf));
-    get_id();
     
 }
 u_short Rdt::cksum(u_short *buf,int count)
@@ -89,13 +88,15 @@ u_short Rdt::cksum(u_short *buf,int count)
             sum++;
         }
     }
-    cout<< "校验和：";
-    for(int i = 15;i >= 0;i--)
-    {
-        std::cout<<((sum >> i) & 1) ;
-    }
-    cout<<endl;
+    /* cout<< "校验和："; */
+    /* for(int i = 15;i >= 0;i--) */
+    /* { */
+    /*     std::cout<<((sum >> i) & 1) ; */
+    /* } */
+    /* cout<<endl; */
+    // 将校验和高8位传给a
     a = sum >> 8;
+    // 将校验和高8位和低8位进行交换并赋值给b
     b = ((sum >> 8 | sum << 8) >> 8);
     /* cout<<"buff:"; */
     Send_buff[1] = a;
