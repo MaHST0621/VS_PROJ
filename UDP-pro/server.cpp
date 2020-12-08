@@ -6,7 +6,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <iostream>
 
+using namespace std;
 #define SERV_PORT   8000   
 #define SEND_BUFF   256
   
@@ -24,6 +26,12 @@ u_short cksum(u_short *buf,int count)
             sum++;
         }
     }
+    cout<< "校验和：";
+    for(int i = 15;i >= 0;i--)
+    {
+        std::cout<<((sum >> i) & 1) ;
+    }
+    cout<<endl;
     return ~(sum & 0xFFFF);
 }
 
@@ -39,6 +47,7 @@ public:
 public:
     void make_pak(int id,char* buf);
     int  getlen_buf(char* buf);
+    u_short  get_id(char* buf);
 
 };
 
@@ -47,6 +56,14 @@ int Rdt::getlen_buf(char* buf)
     return strlen(buf);
 }
 
+u_short Rdt::get_id(char* buf)
+{
+    for(int i=7; i >= 0; i--)
+    {
+        std::cout<<((buf[1] >> i) & 1);
+    }
+    cout<<endl;
+}
 void Rdt::make_pak(int id,char* buf)
 {
     if(id == 1){
@@ -58,6 +75,8 @@ void Rdt::make_pak(int id,char* buf)
 
     Send_buff[1] = cksum((u_short*)buf,getlen_buf(buf));
     Send_buff[3] = *buf;
+    get_id(buf);
+    
 }
 
 
@@ -91,11 +110,13 @@ int main()
     
     int recv_num;  
     int send_num;  
-    char send_buff[SEND_BUFF] = "i am server!";
+    char send_buff[SEND_BUFF];
+    memset(send_buff,0,sizeof(send_buff));
     char recv_buff[20];
 
     struct sockaddr_in addr_client;  
-
+    cout<<"cin:";
+    cin>>send_buff;
     Rdt Rdt_udp;
     Rdt_udp.make_pak(0,send_buff);  
     while(1)  
@@ -109,7 +130,6 @@ int main()
                     perror("接受报错:");  
                     exit(1);  
                 }  
-              
             recv_buff[recv_num] = '\0';
             printf("server receive %d bytes: %s\n", recv_num, recv_buff);  
               

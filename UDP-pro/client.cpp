@@ -9,6 +9,7 @@
 #include <arpa/inet.h>   
    
   
+#define BUFF_MX 256
 #define DEST_PORT 8000   
 #define DSET_IP_ADDRESS  "127.0.0.1"   
    
@@ -37,8 +38,8 @@ int main()
     
     int send_num;  
     int recv_num;  
-    char send_buff[20] = "hey, who are you?";  
-    char recv_buff[20];  
+    char send_buff[BUFF_MX] = "hey, who are you?";  
+    char recv_buff[BUFF_MX];  
       
     printf("client send: %s\n", send_buff);  
     
@@ -57,7 +58,14 @@ int main()
             exit(1);  
         }  
     
-    recv_buff[recv_num] = '\0';  
+    if(recv_buff[0] == 0x1)
+    {
+        printf("test1");
+    }
+    if(recv_buff[3] == 'i')
+    {
+        printf("test2");
+    }
     printf("client receive %d bytes: %s\n", recv_num, recv_buff);  
         
       close(sock_fd);  
