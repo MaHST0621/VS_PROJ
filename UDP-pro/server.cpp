@@ -11,12 +11,75 @@
 using namespace std;
 #define SERV_PORT   8000   
 #define SEND_BUFF   256
-  
+
+class Rdt
+{
+public:
+    int ack_id;
+    int ack = 1;
+    char* Send_buff = new char[SEND_BUFF];
+    
+
+public:
+    u_short cksum(u_short *buf,int count);
+    void make_pak(int id,char* buf);
+    int  getlen_buf(char* buf);
+    u_short  get_id();
 
 
-u_short cksum(u_short *buf,int count)
+};
+
+int Rdt::getlen_buf(char* buf)
+{
+    return strlen(buf);
+}
+
+u_short Rdt::get_id()
+{
+    for(int j=0; j < 4 ; j++)
+    {
+
+    
+        for(int i=7; i >= 0; i--)
+        {
+            std::cout<<((Send_buff[j] >> i) & 1);
+        }
+    
+    }
+    cout<<endl;
+}
+void Rdt::make_pak(int id,char* buf)
+{
+    /* Send_buff[0] += 1; */
+    /* cout<<"init:"; */
+    /* for(int i = 7; i >= 0;i--) */
+    /* { */
+    /*     std::cout<<((Send_buff[0] >> i) &  1); */
+    /* } */
+    /* cout<<endl; */
+    if(id == 1){
+        memset(&Send_buff[0],0,sizeof(Send_buff[0]));
+        Send_buff[0] += 1;
+    }
+    else if (id == 0){
+        memset(&Send_buff[0],0,sizeof(Send_buff[0]));
+    }
+    /* cout<<"inin:"; */
+    /* for(int i = 7; i >= 0;i--) */
+    /* { */
+    /*     std::cout<<((Send_buff[0] >> i) &  1); */
+    /* } */
+    /* cout<<endl; */
+
+    cksum((u_short*)buf,getlen_buf(buf));
+    get_id();
+    
+}
+u_short Rdt::cksum(u_short *buf,int count)
 {
     u_long sum = 0;
+    u_char a;
+    u_char b;
     while(count--)
     {
         sum += *buf++;
@@ -32,52 +95,25 @@ u_short cksum(u_short *buf,int count)
         std::cout<<((sum >> i) & 1) ;
     }
     cout<<endl;
+    a = sum >> 8;
+    b = ((sum >> 8 | sum << 8) >> 8);
+    /* cout<<"buff:"; */
+    Send_buff[1] = a;
+    Send_buff[2] = b;
+    /* for(int i = 7; i >= 0; i--) */
+    /* { */
+    /*     std::cout<< ((Send_buff[1] >> i) & 1); */
+    /* } */
+    /* cout<<"    "; */
+    /* for(int i = 7; i >= 0; i--) */
+    /* { */
+    /*     std::cout<< ((Send_buff[2] >> i) & 1); */
+    /* } */
+    cout<<endl;
     return ~(sum & 0xFFFF);
 }
 
 
-
-class Rdt
-{
-public:
-    int ack_id;
-    int ack = 1;
-    char* Send_buff = new char[SEND_BUFF];
-
-public:
-    void make_pak(int id,char* buf);
-    int  getlen_buf(char* buf);
-    u_short  get_id(char* buf);
-
-};
-
-int Rdt::getlen_buf(char* buf)
-{
-    return strlen(buf);
-}
-
-u_short Rdt::get_id(char* buf)
-{
-    for(int i=7; i >= 0; i--)
-    {
-        std::cout<<((buf[1] >> i) & 1);
-    }
-    cout<<endl;
-}
-void Rdt::make_pak(int id,char* buf)
-{
-    if(id == 1){
-        Send_buff[0] |= 0x1;
-    }
-    else if (id == 0){
-        Send_buff[0] |= 0x0;
-    }
-
-    Send_buff[1] = cksum((u_short*)buf,getlen_buf(buf));
-    Send_buff[3] = *buf;
-    get_id(buf);
-    
-}
 
 
 int main()  
@@ -118,7 +154,7 @@ int main()
     cout<<"cin:";
     cin>>send_buff;
     Rdt Rdt_udp;
-    Rdt_udp.make_pak(0,send_buff);  
+    Rdt_udp.make_pak(1,send_buff);  
     while(1)  
         {  
             printf("等待链接:\n");  
