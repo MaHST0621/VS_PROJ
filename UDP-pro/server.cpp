@@ -88,6 +88,7 @@ u_short Rdt::cksum(u_short *buf,int count)
             sum++;
         }
     }
+    sum = ~ (sum & 0xFFFF);
     /* cout<< "校验和："; */
     /* for(int i = 15;i >= 0;i--) */
     /* { */
