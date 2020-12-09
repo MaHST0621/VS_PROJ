@@ -16,37 +16,46 @@ class Rdt
 {
 public:
     int ack_id;
-    int ack = 1;
+
     char* Send_buff = new char[SEND_BUFF];
     
 
 public:
     u_short cksum(u_short *buf,int count);
     void make_pak(int id,char* buf);
-    int  getlen_buf(char* buf);
-    u_short  get_id();
-
+    int  get_id();
+    void insert_buf(char* buf);
+    void output_buf();
 
 };
 
-int Rdt::getlen_buf(char* buf)
-{
-    return strlen(buf);
-}
 
-u_short Rdt::get_id()
+void Rdt::insert_buf(char* buf)
 {
-    for(int j=0; j < 4 ; j++)
+    int length = strlen(buf);
+    for(int i = 0,j = 3 ;i < length;i++,j++)
     {
-
-    
-        for(int i=7; i >= 0; i--)
-        {
-            std::cout<<((Send_buff[j] >> i) & 1);
-        }
-    
+        Send_buff[j] = buf[i];
+    }
+}
+//输出输入部分
+void Rdt::output_buf()
+{
+    cout<<"buf:";
+    int length = strlen(Send_buff);
+    for(int i = 3;i <length;i++)
+    {
+        cout<<Send_buff[i];
     }
     cout<<endl;
+}
+//提取消息分组编号
+int Rdt::get_id()
+{
+    if((Send_buff[0] >> 0) & 1)
+        return 1;
+    else
+        return 0;
 }
 void Rdt::make_pak(int id,char* buf)
 {
@@ -70,10 +79,11 @@ void Rdt::make_pak(int id,char* buf)
     /*     std::cout<<((Send_buff[0] >> i) &  1); */
     /* } */
     /* cout<<endl; */
+    cksum((u_short*)buf,strlen(buf));
+    insert_buf(buf);
+    output_buf();
 
-    cksum((u_short*)buf,getlen_buf(buf));
-    get_id();
-}
+   }
 u_short Rdt::cksum(u_short *buf,int count)
 {
     u_long sum = 0;
@@ -89,12 +99,12 @@ u_short Rdt::cksum(u_short *buf,int count)
         }
     }
     sum = ~ (sum & 0xFFFF);
-    cout<< "校验和：";
-    for(int i = 15;i >= 0;i--)
-    {
-        std::cout<<((sum >> i) & 1) ;
-    }
-    cout<<endl;
+    /* cout<< "校验和："; */
+    /* for(int i = 15;i >= 0;i--) */
+    /* { */
+    /*     std::cout<<((sum >> i) & 1) ; */
+    /* } */
+    /* cout<<endl; */
     // 将校验和高8位传给a
     a = sum >> 8;
     // 将校验和高8位和低8位进行交换并赋值给b
@@ -102,17 +112,17 @@ u_short Rdt::cksum(u_short *buf,int count)
     /* cout<<"buff:"; */
     Send_buff[1] = a;
     Send_buff[2] = b;
-    for(int i = 7; i >= 0; i--)
-    {
-        std::cout<< ((Send_buff[1] >> i) & 1);
-    }
-    cout<<"    ";
-    for(int i = 7; i >= 0; i--)
-    {
-        std::cout<< ((Send_buff[2] >> i) & 1);
-    }
-    cout<<endl;
-    return ~(sum & 0xFFFF);
+    /* for(int i = 7; i >= 0; i--) */
+    /* { */
+    /*     std::cout<< ((Send_buff[1] >> i) & 1); */
+    /* } */
+    /* cout<<"    "; */
+    /* for(int i = 7; i >= 0; i--) */
+    /* { */
+    /*     std::cout<< ((Send_buff[2] >> i) & 1); */
+    /* } */
+    /* cout<<endl; */
+    return sum ;
 }
 
 
@@ -156,7 +166,7 @@ int main()
     cout<<"cin:";
     cin>>send_buff;
     Rdt Rdt_udp;
-    Rdt_udp.make_pak(1,send_buff);  
+    Rdt_udp.make_pak(0,send_buff);  
     while(1)  
         {  
             printf("等待链接:\n");  
