@@ -17,12 +17,11 @@ using namespace std;
 #define DSET_IP_ADDRESS  "127.0.0.1"   
    
 
-
 class Rdt
 {
 public:
     int ack_id;
-    int count_head = 6;
+    int count_head = 7;
     unsigned char Send_buff[BUFF_MX];
     
 
@@ -30,7 +29,8 @@ public:
     u_short cksum(u_short *buf,int count);
     int  check_cksum(char* buf);
     void make_pak(int id,char* buf);
-    int  get_id();
+    int  get_id(char* buf);
+    void set_seq(int i);
     void insert_buf(char* buf);
     void output_buf(char* buf);
     void set_ack(int i);
@@ -39,10 +39,18 @@ public:
     int  get_strlen(char* buf);
 };
 
+void Rdt::set_seq(int i)
+{
+    Send_buff[2] = i;
+}
+
+
+
+
 int Rdt::get_strlen(char* buf)
 {
     u_short sum;
-    sum = (buf[4] << 8) | buf[5];
+    sum = (buf[5] << 8) | buf[6];
     return (int)sum;
 }
 
@@ -50,7 +58,7 @@ int Rdt::get_strlen(char* buf)
 
 void Rdt::output_head(char* buf)
 {
-    for(int i = 0; i < count_head + 5;i++)
+    for(int i = 0; i < count_head;i++)
     {
         printf("head:");
         for(int j = 7;j >= 0; j--)
@@ -73,22 +81,22 @@ void Rdt::set_strlen(char* buf)
         {
             if(test[i])
             {
-                Send_buff[5] |= (1 << j);
+                Send_buff[6] |= (1 << j);
             }
             else
             {
-                Send_buff[5] &= ~(1 << j);
+                Send_buff[6] &= ~(1 << j);
             }
         }
         if(j >= 8)
         {
             if(test[i])
             {
-                Send_buff[4] |= (1 << (j-8));
+                Send_buff[5] |= (1 << (j-8));
             }
             else
             {
-                Send_buff[4] &= ~(1 << (j-8));
+                Send_buff[5] &= ~(1 << (j-8));
             }
         }
     }
@@ -118,6 +126,7 @@ void Rdt::insert_buf(char* buf)
 //输出输入部分
 void Rdt::output_buf(char* buf)
 {
+    cout<<"buf:";
     for(int i = count_head;i < count_head + get_strlen(buf);i++)
     {
         cout<<buf[i];
@@ -125,9 +134,9 @@ void Rdt::output_buf(char* buf)
     cout<<endl;
 }
 //提取消息分组编号
-int Rdt::get_id()
+int Rdt::get_id(char* buf)
 {
-    if((Send_buff[0] >> 0) & 1)
+    if((buf[0] >> 0) & 1)
         return 1;
     else
         return 0;
@@ -157,10 +166,6 @@ void Rdt::make_pak(int id,char* buf)
     insert_buf(buf);
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen(buf);
-    set_ack(1);
-    output_head((char*)Send_buff);
-    cout<<endl<<check_cksum((char*)Send_buff);
-    output_buf((char*)Send_buff);
    
 }
 u_short Rdt::cksum(u_short *buf,int count)
@@ -179,19 +184,19 @@ u_short Rdt::cksum(u_short *buf,int count)
         }
     }
     sum = ~ (sum & 0xFFFF);
-    cout<< "校验和：";
-    for(int i = 15;i >= 0;i--)
-    {
-        std::cout<<((sum >> i) & 1) ;
-    }
-    cout<<endl;
+    /* cout<< "校验和："; */
+    /* for(int i = 15;i >= 0;i--) */
+    /* { */
+    /*     std::cout<<((sum >> i) & 1) ; */
+    /* } */
+    /* cout<<endl; */
     // 将校验和高8位传给a
     a = sum >> 8;
     // 将校验和高8位和低8位进行交换并赋值给b
     b = sum & 0xFF;
     /* cout<<"buff:"; */
-    Send_buff[2] = a;
-    Send_buff[3] = b;
+    Send_buff[3] = a;
+    Send_buff[4] = b;
     /* for(int i = 7; i >= 0; i--) */
     /* { */
     /*     std::cout<< ((Send_buff[1] >> i) & 1); */
@@ -209,11 +214,11 @@ u_short Rdt::cksum(u_short *buf,int count)
 int  Rdt::check_cksum(char* buf)
 {
     u_short tmp;
-    tmp = (buf[2] << 8) | buf[3];
-    buf[2] = 0x0;
+    tmp = (buf[3] << 8) | buf[4];
     buf[3] = 0x0;
+    buf[4] = 0x0;
     u_long sum = 0;
-    int count = 4 + get_strlen(buf);
+    int count = count_head + get_strlen(buf);
     while(count--)
     {
         sum += *buf++;
@@ -261,8 +266,12 @@ int main()
     
     int send_num;  
     int recv_num;  
+    int look_num;
+    int cos = 0;
     Rdt Client;
-    u_char send_buff[BUFF_MX] = "hey, who are you?";  
+    u_char send_buff[BUFF_MX] = "i am here!!";  
+    u_char send_ack[1];
+    memset(send_ack,0,1);
     Client.make_pak(1,(char*)send_buff);
     u_char recv_buff[BUFF_MX];  
       
@@ -271,23 +280,51 @@ int main()
     send_num = sendto(sock_fd, Client.Send_buff,sizeof(Client.Send_buff) , 0, (struct sockaddr *)&addr_serv, len);  
     if(send_num < 0)  
         {  
-            perror("sendto error:");  
+            perror("发送报错:");  
             exit(1);  
         }  
-    
-    recv_num = recvfrom(sock_fd, recv_buff, sizeof(Client.Send_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
+    else
+    {
+        cout<<"----------------------------------------------------以成功发送请求，准备接受文件----------------------------------------------------"<<endl;
+    }
+    while(1)
+    {
+        recv_num = recvfrom(sock_fd, recv_buff, sizeof(Client.Send_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
       
-    if(recv_num < 0)  
+        if(recv_num < 0)  
         {  
-            perror("recvfrom error:");  
+            perror("接受报错:");  
             exit(1);  
         }  
-    
-    printf("client receive %d bytes: ", recv_num);
-    Client.output_buf((char*)recv_buff);
-    cout<<endl;
-    Client.output_head((char*)recv_buff);
-        
+        if(Client.check_cksum((char*)recv_buff))
+        {
+            cout<<"----------------------------------------------------- 正确接受，发送ACK----------------------------------------------------"<<endl;
+            look_num = Client.get_id((char*)recv_buff) + 1;
+            Client.make_pak(Client.get_id((char*)recv_buff),(char*)send_ack);
+            Client.set_ack(1);
+            Client.set_seq(look_num);
+            sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+            
+        }
+        else
+        {
+            cout<<"----------------------------------------------------- 错误接受，发送ACK----------------------------------------------------"<<endl;
+            look_num = Client.get_id((char*)recv_buff);
+            Client.make_pak(Client.get_id((char*)recv_buff),(char*)send_ack);
+            Client.set_seq(look_num);
+            Client.set_ack(1);
+            sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+        }
+        printf("client receive %d bytes: ", recv_num);
+        Client.output_buf((char*)recv_buff);
+        cout<<endl;
+        cos++;
+        Client.output_head((char*)recv_buff);
+        if(cos > 3)
+        {
+            break;
+        }
+    }    
       close(sock_fd);  
           
         return 0;  
