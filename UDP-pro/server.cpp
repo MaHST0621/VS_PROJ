@@ -8,9 +8,10 @@
 #include <string.h>
 #include <iostream>
 #include <bitset>
+#include <fstream>
 using namespace std;
 #define SERV_PORT   8000   
-#define SEND_BUFF   256
+#define SEND_BUFF   1038
 
 class Rdt
 {
@@ -270,7 +271,7 @@ int main()
     
     int recv_num;
     int send_num;
-    char send_buff[SEND_BUFF];
+    char send_buff[1024];
     memset(send_buff,0,sizeof(send_buff));
     char recv_buff[20];
     struct sockaddr_in addr_client;  
@@ -278,6 +279,20 @@ int main()
     cin>>send_buff;
     Rdt Server;
     int count_id = 0;
+    ifstream file("mm.jpg",ifstream::in|ios::binary);
+
+    if(!file.is_open())
+    {
+            printf("文件无法打开！\n");
+            exit(1);
+    }
+    file.seekg(0,std::ios_base::end);
+    int length = file.tellg();
+    int totalpackage = length / 1024 + 1;
+    printf("文件大小为%d bytes,总共有%d个数据包\n",length,totalpackage);
+    file.seekg(0,std::ios_base::beg);
+
+
     while(1)  
         {  
             cout<<"----------------------------------------------------等待链接-----------------------------------------------------------------"<<endl;
@@ -293,10 +308,12 @@ int main()
                 cout<<"OK!"<<endl;
             }
             
-
+            
             while(1)
             {
+                
                 cout<<"test!1"<<endl;
+                file.read(send_buff,1024);
                 Server.make_pak(count_id,send_buff);  
 
                 send_num = sendto(sock_fd, Server.Send_buff, sizeof(Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
