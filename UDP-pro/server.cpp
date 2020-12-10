@@ -22,22 +22,34 @@ public:
 
 public:
     u_short cksum(u_short *buf,int count);
+    int  check_cksum(char* buf);
     void make_pak(int id,char* buf);
     int  get_id();
     void insert_buf(char* buf);
-    void output_buf();
+    void output_buf(char* buf);
     void set_ack(int i);
     void set_strlen(char* buf);
-    void output_head();
+    void output_head(char* buf);
+    int  get_strlen(char* buf);
 };
-void Rdt::output_head()
+
+int Rdt::get_strlen(char* buf)
 {
-    for(int i = 0; i < count_head;i++)
+    u_short sum;
+    sum = (buf[4] << 8) | buf[5];
+    return (int)sum;
+}
+
+
+
+void Rdt::output_head(char* buf)
+{
+    for(int i = 0; i < count_head + 5;i++)
     {
-        cout<<"head:";
+        printf("head:");
         for(int j = 7;j >= 0; j--)
         {
-            cout<<((Send_buff[i] >> j) & 1);
+            cout<<((buf[i] >> j) & 1);
         }
     }
     cout<<endl;
@@ -92,19 +104,18 @@ void Rdt::set_ack(int i)
 void Rdt::insert_buf(char* buf)
 {
     int length = strlen(buf);
-    for(int i = 0,j = count_head - 1 ;i < length;i++,j++)
+    for(int i = 0,j = count_head ;i < length;i++,j++)
     {
         Send_buff[j] = buf[i];
     }
 }
 //输出输入部分
-void Rdt::output_buf()
+void Rdt::output_buf(char* buf)
 {
     cout<<"buf:";
-    int length = strlen((char*)Send_buff);
-    for(int i = count_head;i <length;i++)
+    for(int i = count_head;i < count_head + get_strlen(buf);i++)
     {
-        cout<<Send_buff[i];
+        cout<<buf[i];
     }
     cout<<endl;
 }
@@ -139,12 +150,8 @@ void Rdt::make_pak(int id,char* buf)
     /* } */
     /* cout<<endl; */
     insert_buf(buf);
-    output_buf();
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen(buf);
-    set_ack(1);
-    output_head();
-    
    
 }
 u_short Rdt::cksum(u_short *buf,int count)
@@ -163,12 +170,12 @@ u_short Rdt::cksum(u_short *buf,int count)
         }
     }
     sum = ~ (sum & 0xFFFF);
-    cout<< "校验和：";
-    for(int i = 15;i >= 0;i--)
-    {
-        std::cout<<((sum >> i) & 1) ;
-    }
-    cout<<endl;
+    /* cout<< "校验和："; */
+    /* for(int i = 15;i >= 0;i--) */
+    /* { */
+    /*     std::cout<<((sum >> i) & 1) ; */
+    /* } */
+    /* cout<<endl; */
     // 将校验和高8位传给a
     a = sum >> 8;
     // 将校验和高8位和低8位进行交换并赋值给b
@@ -190,16 +197,14 @@ u_short Rdt::cksum(u_short *buf,int count)
 }
 
 
-int check_cksum(char* buf)
+int  Rdt::check_cksum(char* buf)
 {
-    char test[3];
-    memset(test,0,sizeof(test));
-    test[0] = buf[2];
-    test[1] = buf[3];
+    u_short tmp;
+    tmp = (buf[2] << 8) | buf[3];
     buf[2] = 0x0;
     buf[3] = 0x0;
     u_long sum = 0;
-    int count = 4 + (int)buf[4];
+    int count = 4 + get_strlen(buf);
     while(count--)
     {
         sum += *buf++;
@@ -209,8 +214,15 @@ int check_cksum(char* buf)
             sum++;
         }
     }
-
-    
+    sum = ~(sum & 0xFFFF);
+    if((sum) ^ (tmp))
+    {
+        return 99;
+    }
+    else
+    {
+        return 100;
+    }
 
 }
 
@@ -255,6 +267,17 @@ int main()
     while(1)  
         {  
             cout<<"----------------------------------------------------等待链接-----------------------------------------------------------------"<<endl;
+
+            recv_num = recvfrom(sock_fd, recv_buff, sizeof(recv_buff), 0, (struct sockaddr *)&addr_client, (socklen_t *)&len);    
+            if(recv_num < 0)  
+            {  
+                perror("接受报错:");  
+                exit(1);  
+            } 
+            else
+            {
+                cout<<"OK!"<<endl;
+            }
             
 
             int count_id = 1;
