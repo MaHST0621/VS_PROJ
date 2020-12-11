@@ -17,7 +17,7 @@ class Rdt
 {
 public:
     int ack_id;
-    int count_head = 7;
+    int count_head = 8;
     unsigned char Send_buff[SEND_BUFF];
     
 
@@ -25,32 +25,65 @@ public:
     u_short cksum(u_short *buf,int count);
     int  check_cksum(char* buf);
     void make_pak(int id,char* buf);
-    int  get_id();
+    int  get_id(char* buf);
     void set_seq(int i);
     int  get_seq(char* buf);
     void insert_buf(char* buf);
-    void output_buf(char* buf);
+    void output_buf(char* buf,char* buff);
     void set_ack(int i);
     void set_strlen(char* buf);
     void output_head(char* buf);
     int  get_strlen(char* buf);
+    void set_id(int i);
 };
+
+void Rdt::set_id(int i)
+{
+    bitset<16>  test(i);
+    for(int i = 0 ,j = 0; i < 16;i++,j++)
+    {
+        if(j < 8)
+        {
+            if(test[i])
+            {
+                Send_buff[1] |= (1 << j);
+            }
+            else
+            {
+                Send_buff[1] &= ~(1 << j);
+            }
+        }
+        if(j >= 8)
+        {
+            if(test[i])
+            {
+                Send_buff[0] |= (1 << (j-8));
+            }
+            else
+            {
+                Send_buff[0] &= ~(1 << (j-8));
+            }
+        }
+    }
+
+}
+
 
 void Rdt::set_seq(int i)
 {
-    Send_buff[2] = i;
+    Send_buff[3] = i;
 }
 
 int Rdt::get_seq(char* buf)
 {
-    return (int)buf[2];
+    return (int)buf[3];
 }
 
 
 int Rdt::get_strlen(char* buf)
 {
     u_short sum;
-    sum = (buf[5] << 8) | buf[6];
+    sum = (buf[6] << 8) | buf[7];
     return (int)sum;
 }
 
@@ -81,22 +114,22 @@ void Rdt::set_strlen(char* buf)
         {
             if(test[i])
             {
-                Send_buff[6] |= (1 << j);
+                Send_buff[7] |= (1 << j);
             }
             else
             {
-                Send_buff[6] &= ~(1 << j);
+                Send_buff[7] &= ~(1 << j);
             }
         }
         if(j >= 8)
         {
             if(test[i])
             {
-                Send_buff[5] |= (1 << (j-8));
+                Send_buff[6] |= (1 << (j-8));
             }
             else
             {
-                Send_buff[5] &= ~(1 << (j-8));
+                Send_buff[6] &= ~(1 << (j-8));
             }
         }
     }
@@ -105,10 +138,10 @@ void Rdt::set_strlen(char* buf)
 void Rdt::set_ack(int i)
 {
     if(i == 1){
-        Send_buff[1] |= (1);
+        Send_buff[2] |= (1);
     }
     else if (i == 0){
-        Send_buff[1] &=  ~ (1);
+        Send_buff[2] &=  ~ (1);
     }
 
 }
@@ -124,22 +157,20 @@ void Rdt::insert_buf(char* buf)
     }
 }
 //输出输入部分
-void Rdt::output_buf(char* buf)
+void Rdt::output_buf(char* buf,char* buff)
 {
-    cout<<"buf:";
-    for(int i = count_head;i < count_head + get_strlen(buf);i++)
+    for(int i = count_head,j = 0;i < count_head + get_strlen(buf);i++)
     {
-        cout<<buf[i];
+        buff[j] = buf[i];
     }
-    cout<<endl;
 }
 //提取消息分组编号
-int Rdt::get_id()
+int Rdt::get_id(char* buf)
 {
-    if((Send_buff[0] >> 0) & 1)
-        return 1;
-    else
-        return 0;
+    u_short sum;
+    sum = (buf[0] << 8) | buf[1];
+    return (int)sum;
+
 }
 void Rdt::make_pak(int id,char* buf)
 {
@@ -150,19 +181,13 @@ void Rdt::make_pak(int id,char* buf)
     /*     std::cout<<((Send_buff[0] >> i) &  1); */
     /* } */
     /* cout<<endl; */
-    if(id == 1){
-        Send_buff[0] |= 1 ;
-    }
-    else if (id == 0){
-        Send_buff[0] &=  ~ (1);
-        
-    }
     /* cout<<"inin:"; */
     /* for(int i = 7; i >= 0;i--) */
     /* { */
     /*     std::cout<<((Send_buff[0] >> i) &  1); */
     /* } */
     /* cout<<endl; */
+    set_id(id);
     insert_buf(buf);
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen(buf);
@@ -195,8 +220,8 @@ u_short Rdt::cksum(u_short *buf,int count)
     // 将校验和高8位和低8位进行交换并赋值给b
     b = sum & 0xFF;
     /* cout<<"buff:"; */
-    Send_buff[3] = a;
-    Send_buff[4] = b;
+    Send_buff[4] = a;
+    Send_buff[5] = b;
     /* for(int i = 7; i >= 0; i--) */
     /* { */
     /*     std::cout<< ((Send_buff[1] >> i) & 1); */
@@ -214,9 +239,9 @@ u_short Rdt::cksum(u_short *buf,int count)
 int  Rdt::check_cksum(char* buf)
 {
     u_short tmp;
-    tmp = (buf[3] << 8) | buf[4];
-    buf[3] = 0x0;
+    tmp = (buf[4] << 8) | buf[5];
     buf[4] = 0x0;
+    buf[5] = 0x0;
     u_long sum = 0;
     int count = count_head + get_strlen(buf);
     while(count--)
@@ -340,14 +365,14 @@ int main()
                         {
                             cout<<"未能正确接受"<<endl;    
                             Server.make_pak(count_id,send_buff);  
-                            send_num = sendto(sock_fd, Server.Send_buff, sizeof(Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);     
+                            send_num = sendto(sock_fd, Server.Send_buff, Server.get_strlen((char*)Server.Send_buff)+Server.count_head, 0, (struct sockaddr *)&addr_client, len);     
                             cout<<"--------------------------------------------------重传成功,等待反馈------------------------------------------------------------"<<endl;
                             continue;
                         }
                         else
                         {
                             cout<<"对方正确接受,准备发送下一个包"<<endl;
-                            count_id++;
+                            count_id = 0;
                             break;
                         }
                     }

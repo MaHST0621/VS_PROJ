@@ -9,10 +9,11 @@
 #include <arpa/inet.h>   
 #include <iostream>
 #include <bitset>
+#include <fstream>
 using namespace std;
    
   
-#define BUFF_MX 256
+#define BUFF_MX 1300
 #define DEST_PORT 8000   
 #define DSET_IP_ADDRESS  "127.0.0.1"   
    
@@ -21,7 +22,7 @@ class Rdt
 {
 public:
     int ack_id;
-    int count_head = 7;
+    int count_head = 8;
     unsigned char Send_buff[BUFF_MX];
     
 
@@ -31,26 +32,63 @@ public:
     void make_pak(int id,char* buf);
     int  get_id(char* buf);
     void set_seq(int i);
+    int  get_seq(char* buf);
     void insert_buf(char* buf);
-    void output_buf(char* buf);
+    void output_buf(char* buf,char* buff);
     void set_ack(int i);
     void set_strlen(char* buf);
     void output_head(char* buf);
     int  get_strlen(char* buf);
+    void set_id(int i);
 };
 
-void Rdt::set_seq(int i)
+void Rdt::set_id(int i)
 {
-    Send_buff[2] = i;
+    bitset<16>  test(i);
+    for(int i = 0 ,j = 0; i < 16;i++,j++)
+    {
+        if(j < 8)
+        {
+            if(test[i])
+            {
+                Send_buff[1] |= (1 << j);
+            }
+            else
+            {
+                Send_buff[1] &= ~(1 << j);
+            }
+        }
+        if(j >= 8)
+        {
+            if(test[i])
+            {
+                Send_buff[0] |= (1 << (j-8));
+            }
+            else
+            {
+                Send_buff[0] &= ~(1 << (j-8));
+            }
+        }
+    }
+
 }
 
 
+void Rdt::set_seq(int i)
+{
+    Send_buff[3] = i;
+}
+
+int Rdt::get_seq(char* buf)
+{
+    return (int)buf[3];
+}
 
 
 int Rdt::get_strlen(char* buf)
 {
     u_short sum;
-    sum = (buf[5] << 8) | buf[6];
+    sum = (buf[6] << 8) | buf[7];
     return (int)sum;
 }
 
@@ -81,22 +119,22 @@ void Rdt::set_strlen(char* buf)
         {
             if(test[i])
             {
-                Send_buff[6] |= (1 << j);
+                Send_buff[7] |= (1 << j);
             }
             else
             {
-                Send_buff[6] &= ~(1 << j);
+                Send_buff[7] &= ~(1 << j);
             }
         }
         if(j >= 8)
         {
             if(test[i])
             {
-                Send_buff[5] |= (1 << (j-8));
+                Send_buff[6] |= (1 << (j-8));
             }
             else
             {
-                Send_buff[5] &= ~(1 << (j-8));
+                Send_buff[6] &= ~(1 << (j-8));
             }
         }
     }
@@ -105,10 +143,10 @@ void Rdt::set_strlen(char* buf)
 void Rdt::set_ack(int i)
 {
     if(i == 1){
-        Send_buff[1] |= (1);
+        Send_buff[2] |= (1);
     }
     else if (i == 0){
-        Send_buff[1] &=  ~ (1);
+        Send_buff[2] &=  ~ (1);
     }
 
 }
@@ -124,22 +162,20 @@ void Rdt::insert_buf(char* buf)
     }
 }
 //输出输入部分
-void Rdt::output_buf(char* buf)
+void Rdt::output_buf(char* buf,char* buff)
 {
-    cout<<"buf:";
-    for(int i = count_head;i < count_head + get_strlen(buf);i++)
+    for(int i = count_head,j = 0;i < count_head + get_strlen(buf);i++)
     {
-        cout<<buf[i];
+        buff[j] = buf[i];
     }
-    cout<<endl;
 }
 //提取消息分组编号
 int Rdt::get_id(char* buf)
 {
-    if((buf[0] >> 0) & 1)
-        return 1;
-    else
-        return 0;
+    u_short sum;
+    sum = (buf[0] << 8) | buf[1];
+    return (int)sum;
+
 }
 void Rdt::make_pak(int id,char* buf)
 {
@@ -150,19 +186,13 @@ void Rdt::make_pak(int id,char* buf)
     /*     std::cout<<((Send_buff[0] >> i) &  1); */
     /* } */
     /* cout<<endl; */
-    if(id == 1){
-        Send_buff[0] |= 1 ;
-    }
-    else if (id == 0){
-        Send_buff[0] &=  ~ (1);
-        
-    }
     /* cout<<"inin:"; */
     /* for(int i = 7; i >= 0;i--) */
     /* { */
     /*     std::cout<<((Send_buff[0] >> i) &  1); */
     /* } */
     /* cout<<endl; */
+    set_id(id);
     insert_buf(buf);
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen(buf);
@@ -195,8 +225,8 @@ u_short Rdt::cksum(u_short *buf,int count)
     // 将校验和高8位和低8位进行交换并赋值给b
     b = sum & 0xFF;
     /* cout<<"buff:"; */
-    Send_buff[3] = a;
-    Send_buff[4] = b;
+    Send_buff[4] = a;
+    Send_buff[5] = b;
     /* for(int i = 7; i >= 0; i--) */
     /* { */
     /*     std::cout<< ((Send_buff[1] >> i) & 1); */
@@ -214,9 +244,9 @@ u_short Rdt::cksum(u_short *buf,int count)
 int  Rdt::check_cksum(char* buf)
 {
     u_short tmp;
-    tmp = (buf[3] << 8) | buf[4];
-    buf[3] = 0x0;
+    tmp = (buf[4] << 8) | buf[5];
     buf[4] = 0x0;
+    buf[5] = 0x0;
     u_long sum = 0;
     int count = count_head + get_strlen(buf);
     while(count--)
@@ -239,7 +269,6 @@ int  Rdt::check_cksum(char* buf)
     }
 
 }
-
 
 int main()  
 {  
@@ -276,6 +305,12 @@ int main()
     u_char recv_buff[BUFF_MX];  
       
     printf("client send: %s\n", send_buff);  
+    std::ofstream out_result("test2.txt",std::ios::out | std::ios::binary);
+    if(!out_result.is_open())
+    {
+        printf("文件打开失败!\n");
+    }
+
     
     send_num = sendto(sock_fd, Client.Send_buff,sizeof(Client.Send_buff) , 0, (struct sockaddr *)&addr_serv, len);  
     if(send_num < 0)  
@@ -285,11 +320,11 @@ int main()
         }  
     else
     {
-        cout<<"----------------------------------------------------以成功发送请求，准备接受文件----------------------------------------------------"<<endl;
+        cout<<"----------------------------------------------------已成功发送请求，准备接受文件----------------------------------------------------"<<endl;
     }
     while(1)
     {
-        recv_num = recvfrom(sock_fd, recv_buff, sizeof(Client.Send_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
+        recv_num = recvfrom(sock_fd, recv_buff, Client.get_strlen((char*)recv_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
       
         if(recv_num < 0)  
         {  
@@ -299,11 +334,15 @@ int main()
         if(Client.check_cksum((char*)recv_buff))
         {
             cout<<"----------------------------------------------------- 正确接受，发送ACK----------------------------------------------------"<<endl;
+            char buff[Client.get_strlen((char*)recv_buff)];
+            Client.output_buf((char*)recv_buff,buff);
+            out_result.write(buff,Client.get_strlen((char*)recv_buff));
             look_num = Client.get_id((char*)recv_buff) + 1;
             Client.make_pak(Client.get_id((char*)recv_buff),(char*)send_ack);
             Client.set_ack(1);
             Client.set_seq(look_num);
             sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+            memset(recv_buff,0,BUFF_MX);
             
         }
         else
@@ -314,16 +353,15 @@ int main()
             Client.set_seq(look_num);
             Client.set_ack(1);
             sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+            
+            memset(recv_buff,0,BUFF_MX);
         }
         printf("client receive %d bytes: ", recv_num);
-        Client.output_buf((char*)recv_buff);
-        cout<<endl;
-        cos++;
-        Client.output_head((char*)recv_buff);
         if(cos > 3)
         {
             break;
         }
+        cos++;
     }    
       close(sock_fd);  
           
