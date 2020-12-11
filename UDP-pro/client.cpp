@@ -10,9 +10,10 @@
 #include <iostream>
 #include <bitset>
 #include <fstream>
+#include <map>
 using namespace std;
-   
-  
+map<int , int> recv_map;
+int have_id = 0;
 #define BUFF_MX 1300
 #define DEST_PORT 8000   
 #define DSET_IP_ADDRESS  "127.0.0.1"   
@@ -241,6 +242,7 @@ u_short Rdt::cksum(u_short *buf,int count)
 }
 
 
+
 int  Rdt::check_cksum(char* buf)
 {
     u_short tmp;
@@ -270,6 +272,9 @@ int  Rdt::check_cksum(char* buf)
 
 }
 
+
+
+
 int main()  
 {  
     /* socket文件描述符 */  
@@ -296,7 +301,6 @@ int main()
     int send_num;  
     int recv_num;  
     int look_num;
-    int cos = 0;
     Rdt Client;
     u_char send_buff[BUFF_MX] = "i am here!!";  
     u_char send_ack[1];
@@ -313,6 +317,7 @@ int main()
 
     
     send_num = sendto(sock_fd, Client.Send_buff,sizeof(Client.Send_buff) , 0, (struct sockaddr *)&addr_serv, len);  
+    printf("test:\n");
     if(send_num < 0)  
         {  
             perror("发送报错:");  
@@ -325,46 +330,51 @@ int main()
     while(1)
     {
         recv_num = recvfrom(sock_fd, recv_buff, Client.get_strlen((char*)recv_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
-      
+        printf("test:%d\n",Client.get_id((char*)recv_buff));
+        printf("test1\n");
         if(recv_num < 0)  
         {  
             perror("接受报错:");  
             exit(1);  
         }  
-        if(Client.check_cksum((char*)recv_buff))
+        printf("test%d\n",have_id);
+        if(Client.get_id((char*)recv_buff) == (have_id + 1))
         {
-            cout<<"----------------------------------------------------- 正确接受，发送ACK----------------------------------------------------"<<endl;
-            char buff[Client.get_strlen((char*)recv_buff)];
-            Client.output_buf((char*)recv_buff,buff);
-            out_result.write(buff,Client.get_strlen((char*)recv_buff));
-            look_num = Client.get_id((char*)recv_buff) + 1;
-            Client.make_pak(Client.get_id((char*)recv_buff),(char*)send_ack);
-            Client.set_ack(1);
-            Client.set_seq(look_num);
-            sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
-            memset(recv_buff,0,BUFF_MX);
+            if(Client.check_cksum((char*)recv_buff))
+            {
+
+                cout<<"----------------------------------------------------- 正确接受，发送ACK----------------------------------------------------"<<endl;
+                char buff[Client.get_strlen((char*)recv_buff)];
+                Client.output_buf((char*)recv_buff,buff);
+                out_result.write(buff,Client.get_strlen((char*)recv_buff));
+                look_num = have_id + 1;
+                Client.make_pak(look_num,(char*)send_ack);
+                Client.set_ack(1);
+                sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+                have_id++;
+                memset(recv_buff,0,BUFF_MX);
             
+            }
+            else
+            {
+                cout<<"----------------------------------------------------- 错误接受，发送ACK----------------------------------------------------"<<endl;
+                look_num = have_id;
+                Client.make_pak(look_num,(char*)send_ack);
+                Client.set_ack(1);
+                sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+            
+                memset(recv_buff,0,BUFF_MX);
+            }
+        
         }
         else
         {
-            cout<<"----------------------------------------------------- 错误接受，发送ACK----------------------------------------------------"<<endl;
-            look_num = Client.get_id((char*)recv_buff);
-            Client.make_pak(Client.get_id((char*)recv_buff),(char*)send_ack);
-            Client.set_seq(look_num);
-            Client.set_ack(1);
-            sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
-            
-            memset(recv_buff,0,BUFF_MX);
+            continue;
         }
         printf("client receive %d bytes: ", recv_num);
-        if(cos > 3)
-        {
-            break;
-        }
-        cos++;
     }    
-      close(sock_fd);  
+    close(sock_fd);  
           
-        return 0;  
+    return 0;  
 }
 

@@ -9,10 +9,16 @@
 #include <iostream>
 #include <bitset>
 #include <fstream>
+#include <pthread.h>
+#include <map>
+#include <time.h>
 using namespace std;
 #define SERV_PORT   8000   
 #define SEND_BUFF   1038
-
+int total_window = 15;
+int count_id = 0;
+int have_id = 0;
+map<int , bool> maprecv;
 class Rdt
 {
 public:
@@ -265,6 +271,56 @@ int  Rdt::check_cksum(char* buf)
 
 }
 
+void set_map(int id)
+{
+    int j = id - have_id;
+    if(j > 0)
+    { 
+        for(int i = j; i > 0;i--)
+        {
+            maprecv[have_id] = 1;
+            have_id++;
+        }
+    }
+    else 
+        return;
+}
+
+Rdt Tread_rdt;
+
+void *recv_pthread(void *arg)
+{
+    printf("thread working!\n");
+    u_char recv_buff[20];
+    int sockid = (*(int *)arg);
+    
+    struct sockaddr_in src;
+    socklen_t len = sizeof(src);
+    while(1)
+    {
+        printf("thread:1\n");
+        int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen((char*)recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
+        if(recv_num < 0)
+        {
+            printf("接收报错！\n");
+        }
+        printf("thread:2\n");
+        if((recv_buff[2] >> 0) &1)
+        {
+            if(Tread_rdt.check_cksum((char*)recv_buff))
+            {
+                int sum = Tread_rdt.get_id((char*)recv_buff);
+                set_map(sum);    
+            }
+            else
+                continue;
+        }
+        else
+            continue;
+    }
+}
+
+
 
 int main()  
 {  
@@ -293,19 +349,14 @@ int main()
         exit(1);  
     }   
   
-    
     int recv_num;
     int send_num;
     char send_buff[1024];
     memset(send_buff,0,sizeof(send_buff));
     char recv_buff[20];
     struct sockaddr_in addr_client;  
-    cout<<"cin:";
-    cin>>send_buff;
     Rdt Server;
-    int count_id = 0;
     ifstream file("mm.jpg",ifstream::in|ios::binary);
-
     if(!file.is_open())
     {
             printf("文件无法打开！\n");
@@ -316,8 +367,12 @@ int main()
     int totalpackage = length / 1024 + 1;
     printf("文件大小为%d bytes,总共有%d个数据包\n",length,totalpackage);
     file.seekg(0,std::ios_base::beg);
-
-
+    pthread_t tid;
+    int rc = pthread_create(&tid,NULL,recv_pthread,(void *)(&sock_fd));
+    if(rc == 1)
+    {
+        printf("成功打开接收线程!\n");
+    }
     while(1)  
         {  
             cout<<"----------------------------------------------------等待链接-----------------------------------------------------------------"<<endl;
@@ -333,57 +388,96 @@ int main()
                 cout<<"OK!"<<endl;
             }
             
-            
+           printf("0\n"); 
             while(1)
             {
-                
-                cout<<"test!1"<<endl;
-                file.read(send_buff,1024);
-                Server.make_pak(count_id,send_buff);  
-
-                send_num = sendto(sock_fd, Server.Send_buff, sizeof(Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
-                  
-                if(send_num < 0)  
-                {  
-                    perror("发送报错:");  
-                    exit(1);  
-                }  
-                cout<<"----------------------------------------------------发送成功,等待反馈--------------------------------------------------------"<<endl;
-
-                while(1)
-                {                
-                    recv_num = recvfrom(sock_fd, recv_buff, sizeof(recv_buff), 0, (struct sockaddr *)&addr_client, (socklen_t *)&len);    
-                    if(recv_num < 0)  
-                    {  
-                        perror("接受报错:");  
-                        exit(1);  
-                    }  
-                    if((recv_buff[1] >> 0) & 1)
-                    {
-                        cout<<"---------------------------------------------------------成功接受ACK---------------------------------------------------------"<<endl;
-                        if(Server.get_seq((char*)recv_buff) != (count_id + 1))
-                        {
-                            cout<<"未能正确接受"<<endl;    
-                            Server.make_pak(count_id,send_buff);  
-                            send_num = sendto(sock_fd, Server.Send_buff, Server.get_strlen((char*)Server.Send_buff)+Server.count_head, 0, (struct sockaddr *)&addr_client, len);     
-                            cout<<"--------------------------------------------------重传成功,等待反馈------------------------------------------------------------"<<endl;
-                            continue;
-                        }
-                        else
-                        {
-                            cout<<"对方正确接受,准备发送下一个包"<<endl;
-                            count_id = 0;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        continue;
-                    }
+                printf("1\n");
+                if(have_id == totalpackage)
+                {
+                    break;
                 }
+                while(total_window != 0)
+                {
+                    printf("2:%d\n",have_id);
+                    file.read(send_buff,1024);
+                    Server.make_pak(count_id,send_buff);
+                    send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen((char*)Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
+                    if(send_num < 0)
+                    {
+                        printf("发送报错！！\n");
+                    }
+                    count_id++;
+                    totalpackage --;
+                    total_window--;
+                    maprecv[Server.get_id((char*)Server.Send_buff)] = 0;
+                    memset(send_buff,0,1024);
+                }
+                while(total_window == 0)
+                {
+                    file.seekg(have_id,std::ios_base::end);
+                    for(int i = have_id; i < count_id;i++)
+                    {
+                        file.read(send_buff,1024);
+                        Server.make_pak(i,send_buff);
+                        send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen((char*)Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
+                        if(send_num < 0)
+                        {
+                        printf("发送报错！！\n");
+                        }
+
+                    }
+                }  
+
             }
+            break;
+                /* cout<<"test!1"<<endl; */
+                /* file.read(send_buff,1024); */
+                /* Server.make_pak(count_id,send_buff); */  
+
+                /* send_num = sendto(sock_fd, Server.Send_buff, sizeof(Server.Send_buff), 0, (struct sockaddr *)&addr_client, len); */  
+                  
+                /* if(send_num < 0) */  
+                /* { */  
+                /*     perror("发送报错:"); */  
+                /*     exit(1); */  
+                /* } */  
+                /* cout<<"----------------------------------------------------发送成功,等待反馈--------------------------------------------------------"<<endl; */
+
+                /* while(1) */
+                /* { */                
+                /*     recv_num = recvfrom(sock_fd, recv_buff, sizeof(recv_buff), 0, (struct sockaddr *)&addr_client, (socklen_t *)&len); */    
+                /*     if(recv_num < 0) */  
+                /*     { */  
+                /*         perror("接受报错:"); */  
+                /*         exit(1); */  
+                /*     } */  
+                /*     if((recv_buff[2] >> 0) & 1) */
+                /*     { */
+                /*         cout<<"---------------------------------------------------------成功接受ACK---------------------------------------------------------"<<endl; */
+                /*         if(Server.get_seq((char*)recv_buff) != (count_id + 1)) */
+                /*         { */
+                /*             cout<<"未能正确接受"<<endl; */    
+                /*             Server.make_pak(count_id,send_buff); */  
+                /*             send_num = sendto(sock_fd, Server.Send_buff, Server.get_strlen((char*)Server.Send_buff)+Server.count_head, 0, (struct sockaddr *)&addr_client, len); */     
+                /*             cout<<"--------------------------------------------------重传成功,等待反馈------------------------------------------------------------"<<endl; */
+                /*             continue; */
+                /*         } */
+                /*         else */
+                /*         { */
+                /*             cout<<"对方正确接受,准备发送下一个包"<<endl; */
+                /*             count_id = 0; */
+                /*             break; */
+                /*         } */
+                /*     } */
+                /*     else */
+                /*     { */
+                /*         continue; */
+                /*     } */
+                //}
+           // }
         }  
-          
+    
+    exit(1);
     close(sock_fd);  
             
     return 0;  
