@@ -14,10 +14,15 @@
 #include <time.h>
 using namespace std;
 #define SERV_PORT   8000   
-#define SEND_BUFF   1038
-int total_window = 15;
-int count_id = 0;
+#define SEND_BUFF   1032
+
+pthread_mutex_t mutex;
+int total_window = 10;
+int count_id = 1;
 int have_id = 0;
+int acc = 0;
+int last_str;
+int totalpackage;
 map<int , bool> maprecv;
 class Rdt
 {
@@ -25,13 +30,14 @@ public:
     int ack_id;
     int count_head = 8;
     unsigned char Send_buff[SEND_BUFF];
+    int str_length ;
     
 
 public:
     u_short cksum(u_short *buf,int count);
     int  check_cksum(char* buf);
     void make_pak(int id,char* buf);
-    int  get_id(char* buf);
+    int  get_id(u_char* buf);
     void set_seq(int i);
     int  get_seq(char* buf);
     void insert_buf(char* buf);
@@ -97,7 +103,7 @@ int Rdt::get_strlen(char* buf)
 
 void Rdt::output_head(char* buf)
 {
-    for(int i = 0; i < count_head;i++)
+    for(int i = 0; i < count_head ;i++)
     {
         printf("head:");
         for(int j = 7;j >= 0; j--)
@@ -112,8 +118,7 @@ void Rdt::output_head(char* buf)
 //将消息长度放入报文头
 void Rdt::set_strlen(char* buf)
 {
-    int length = strlen(buf);
-    bitset<16>  test(length);
+    bitset<16>  test(str_length);
     for(int i = 0 ,j = 0; i < 16;i++,j++)
     {
         if(j < 8)
@@ -144,10 +149,10 @@ void Rdt::set_strlen(char* buf)
 void Rdt::set_ack(int i)
 {
     if(i == 1){
-        Send_buff[2] |= (1);
+        Send_buff[2] = 1;
     }
     else if (i == 0){
-        Send_buff[2] &=  ~ (1);
+        Send_buff[2] = 0;
     }
 
 }
@@ -156,8 +161,7 @@ void Rdt::set_ack(int i)
 
 void Rdt::insert_buf(char* buf)
 {
-    int length = strlen(buf);
-    for(int i = 0,j = count_head ;i < length;i++,j++)
+    for(int i = 0,j = count_head ;i < str_length;i++,j++)
     {
         Send_buff[j] = buf[i];
     }
@@ -171,11 +175,12 @@ void Rdt::output_buf(char* buf,char* buff)
     }
 }
 //提取消息分组编号
-int Rdt::get_id(char* buf)
+int Rdt::get_id(u_char*  buf)
 {
     u_short sum;
-    sum = (buf[0] << 8) | buf[1];
-    return (int)sum;
+    //sum = (buf[0] << 8) | buf[1];
+    sum =buf[0]*256+buf[1];
+    return sum;
 
 }
 void Rdt::make_pak(int id,char* buf)
@@ -193,7 +198,16 @@ void Rdt::make_pak(int id,char* buf)
     /*     std::cout<<((Send_buff[0] >> i) &  1); */
     /* } */
     /* cout<<endl; */
+    memset(Send_buff,0,sizeof(Send_buff));
+    if(id == totalpackage)
+        str_length = last_str;
+    else
+    {
+        str_length = 1024;
+    }
     set_id(id);
+    set_ack(0);
+    set_seq(0);
     insert_buf(buf);
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen(buf);
@@ -273,17 +287,18 @@ int  Rdt::check_cksum(char* buf)
 
 void set_map(int id)
 {
-    int j = id - have_id;
-    if(j > 0)
-    { 
-        for(int i = j; i > 0;i--)
-        {
-            maprecv[have_id] = 1;
-            have_id++;
-        }
-    }
-    else 
-        return;
+    have_id = id;
+    /* int j = id - have_id; */
+    /* if(j > 0) */
+    /* { */ 
+    /*     for(int i = j; i > 0;i--) */
+    /*     { */
+    /*         maprecv[have_id] = 1; */
+    /*         have_id++; */
+    /*     } */
+    /* } */
+    /* else */ 
+    /*     return; */
 }
 
 Rdt Tread_rdt;
@@ -298,24 +313,35 @@ void *recv_pthread(void *arg)
     socklen_t len = sizeof(src);
     while(1)
     {
-        printf("thread:1\n");
         int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen((char*)recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
+        printf("收到%d号包的反馈\n",Tread_rdt.get_id(recv_buff));
         if(recv_num < 0)
         {
             printf("接收报错！\n");
         }
-        printf("thread:2\n");
-        if((recv_buff[2] >> 0) &1)
+        if(recv_buff[2] == 1)
         {
             if(Tread_rdt.check_cksum((char*)recv_buff))
             {
-                int sum = Tread_rdt.get_id((char*)recv_buff);
+
+                printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
+                int sum = Tread_rdt.get_id(recv_buff);
+                pthread_mutex_lock(&mutex);
+                total_window++;
+                
+                pthread_mutex_unlock(&mutex);
                 set_map(sum);    
             }
             else
                 continue;
         }
+        /* if(recv_buff[2] == 0) */
+        /* { */
+        /*     printf("成功链接\n"); */
+        /*     acc = 1; */
+        /* } */
         else
+            printf("包信息获取错误！\n");
             continue;
     }
 }
@@ -349,9 +375,8 @@ int main()
         exit(1);  
     }   
   
-    int recv_num;
     int send_num;
-    char send_buff[1024];
+    char send_buff[1032];
     memset(send_buff,0,sizeof(send_buff));
     char recv_buff[20];
     struct sockaddr_in addr_client;  
@@ -364,59 +389,74 @@ int main()
     }
     file.seekg(0,std::ios_base::end);
     int length = file.tellg();
-    int totalpackage = length / 1024 + 1;
+    totalpackage = length / 1024 + 1;
+    last_str = (totalpackage * 1024 ) - length;
     printf("文件大小为%d bytes,总共有%d个数据包\n",length,totalpackage);
-    file.seekg(0,std::ios_base::beg);
-    pthread_t tid;
-    int rc = pthread_create(&tid,NULL,recv_pthread,(void *)(&sock_fd));
-    if(rc == 1)
+    if(total_window >= totalpackage)
     {
-        printf("成功打开接收线程!\n");
+        total_window = totalpackage;
     }
-    while(1)  
+    file.seekg(0,std::ios_base::beg);
+       while(1)  
         {  
             cout<<"----------------------------------------------------等待链接-----------------------------------------------------------------"<<endl;
-
-            recv_num = recvfrom(sock_fd, recv_buff, sizeof(recv_buff), 0, (struct sockaddr *)&addr_client, (socklen_t *)&len);    
-            if(recv_num < 0)  
-            {  
-                perror("接受报错:");  
-                exit(1);  
-            } 
-            else
+            recvfrom(sock_fd, recv_buff, sizeof(recv_buff), 0, (struct sockaddr *)&addr_client, (socklen_t *)&len);    
+            if(recv_buff[2] == 0)
             {
-                cout<<"OK!"<<endl;
+                printf("成功链接\n");
+                acc = 1;
             }
-            
-           printf("0\n"); 
+            pthread_t tid;
+            pthread_create(&tid,NULL,recv_pthread,(void *)(&sock_fd));
             while(1)
             {
-                printf("1\n");
+                if(acc != 1)
+                {
+                    continue;
+                }
                 if(have_id == totalpackage)
                 {
                     break;
                 }
+                printf("进入发送循环\n");
                 while(total_window != 0)
                 {
-                    printf("2:%d\n",have_id);
+                    if(count_id > totalpackage)
+                    {
+                        break;
+                    }
                     file.read(send_buff,1024);
                     Server.make_pak(count_id,send_buff);
                     send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen((char*)Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
+
                     if(send_num < 0)
                     {
-                        printf("发送报错！！\n");
+                        printf("%d号包发送报错！！\n",Server.get_id(Server.Send_buff));
+                        cout<<strerror(errno);
+                    }
+                    else
+                    {
+                        printf("成功发送%d号包\n",Server.get_id(Server.Send_buff));
                     }
                     count_id++;
-                    totalpackage --;
                     total_window--;
-                    maprecv[Server.get_id((char*)Server.Send_buff)] = 0;
                     memset(send_buff,0,1024);
                 }
+                sleep(3);
                 while(total_window == 0)
                 {
-                    file.seekg(have_id,std::ios_base::end);
-                    for(int i = have_id; i < count_id;i++)
+                    printf("no\n");
+                    if(have_id == totalpackage)
                     {
+                        break;
+                    }
+                    file.seekg((have_id * 1024) ,std::ios_base::beg);
+                    for(int i = have_id ; i < count_id;i++)
+                    {
+                        if(have_id == 0)
+                        {
+                            i = i+1;
+                        }
                         file.read(send_buff,1024);
                         Server.make_pak(i,send_buff);
                         send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen((char*)Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
@@ -424,7 +464,8 @@ int main()
                         {
                         printf("发送报错！！\n");
                         }
-
+                        printf("重发%d号包\n",Server.get_id(Server.Send_buff));
+                        memset(Server.Send_buff,0,sizeof(Server.Send_buff));
                     }
                 }  
 

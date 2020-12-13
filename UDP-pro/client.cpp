@@ -31,7 +31,7 @@ public:
     u_short cksum(u_short *buf,int count);
     int  check_cksum(char* buf);
     void make_pak(int id,char* buf);
-    int  get_id(char* buf);
+    int  get_id(u_char* buf);
     void set_seq(int i);
     int  get_seq(char* buf);
     void insert_buf(char* buf);
@@ -144,10 +144,10 @@ void Rdt::set_strlen(char* buf)
 void Rdt::set_ack(int i)
 {
     if(i == 1){
-        Send_buff[2] |= (1);
+        Send_buff[2] = 1;
     }
     else if (i == 0){
-        Send_buff[2] &=  ~ (1);
+        Send_buff[2] = 0;
     }
 
 }
@@ -171,11 +171,12 @@ void Rdt::output_buf(char* buf,char* buff)
     }
 }
 //提取消息分组编号
-int Rdt::get_id(char* buf)
+int Rdt::get_id(u_char* buf)
 {
     u_short sum;
-    sum = (buf[0] << 8) | buf[1];
-    return (int)sum;
+    //sum = (buf[0] << 8) | buf[1];
+    sum = buf[0]*256+buf[1];
+    return sum;
 
 }
 void Rdt::make_pak(int id,char* buf)
@@ -306,10 +307,10 @@ int main()
     u_char send_ack[1];
     memset(send_ack,0,1);
     Client.make_pak(1,(char*)send_buff);
-    u_char recv_buff[BUFF_MX];  
+    u_char recv_buff[1032];  
       
     printf("client send: %s\n", send_buff);  
-    std::ofstream out_result("test2.txt",std::ios::out | std::ios::binary);
+    std::ofstream out_result("m.jpg",std::ios::out | std::ios::binary);
     if(!out_result.is_open())
     {
         printf("文件打开失败!\n");
@@ -317,7 +318,6 @@ int main()
 
     
     send_num = sendto(sock_fd, Client.Send_buff,sizeof(Client.Send_buff) , 0, (struct sockaddr *)&addr_serv, len);  
-    printf("test:\n");
     if(send_num < 0)  
         {  
             perror("发送报错:");  
@@ -329,16 +329,17 @@ int main()
     }
     while(1)
     {
-        recv_num = recvfrom(sock_fd, recv_buff, Client.get_strlen((char*)recv_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
-        printf("test:%d\n",Client.get_id((char*)recv_buff));
-        printf("test1\n");
+        recv_num = recvfrom(sock_fd, recv_buff,Client.count_head + Client.get_strlen((char*)recv_buff), 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
+        printf("收到%d号包\n",Client.get_id(recv_buff));
+
+        printf("client receive %d bytes: \n", recv_num);
+        //Client.output_head((char*)recv_buff);
         if(recv_num < 0)  
         {  
             perror("接受报错:");  
             exit(1);  
         }  
-        printf("test%d\n",have_id);
-        if(Client.get_id((char*)recv_buff) == (have_id + 1))
+        if(Client.get_id(recv_buff) == (have_id + 1))
         {
             if(Client.check_cksum((char*)recv_buff))
             {
@@ -369,9 +370,9 @@ int main()
         }
         else
         {
+            printf("不是期望包\n");
             continue;
         }
-        printf("client receive %d bytes: ", recv_num);
     }    
     close(sock_fd);  
           
