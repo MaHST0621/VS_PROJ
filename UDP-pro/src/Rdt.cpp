@@ -17,6 +17,7 @@ int g_acc = 0;
 int g_last_str;
 int g_totalpackage;
 int g_Chave_id = 0;
+int g_pack_length = 0;
 pthread_mutex_t mutex;
 
 
@@ -63,11 +64,12 @@ int Rdt::get_seq(char* buf)
 }
 
 
-int Rdt::get_strlen(char* buf)
+int Rdt::get_strlen(u_char* buf)
 {
     u_short sum;
-    sum = (buf[6] << 8) | buf[7];
-    return (int)sum;
+    //sum = (buf[6] << 8) | buf[7];
+    sum = 256*buf[6] + buf[7];
+    return sum;
 }
 
 
@@ -140,7 +142,7 @@ void Rdt::insert_buf(char* buf)
 //输出输入部分
 void Rdt::output_buf(char* buf,char* buff)
 {
-    for(int i = count_head,j = 0;i < count_head + get_strlen(buf);i++)
+    for(int i = count_head,j = 0;i < count_head + get_strlen((u_char*)buf);i++)
     {
         buff[j] = buf[i];
     }
@@ -149,36 +151,26 @@ void Rdt::output_buf(char* buf,char* buff)
 int Rdt::get_id(u_char*  buf)
 {
     u_short sum;
-    //sum = (buf[0] << 8) | buf[1];
     sum =buf[0]*256+buf[1];
     return sum;
 
 }
 void Rdt::make_pak(int id,char* buf)
 {
-    /* Send_buff[0] += 1; */
-    /* cout<<"init:"; */
-    /* for(int i = 7; i >= 0;i--) */
-    /* { */
-    /*     std::cout<<((Send_buff[0] >> i) &  1); */
-    /* } */
-    /* cout<<endl; */
-    /* cout<<"inin:"; */
-    /* for(int i = 7; i >= 0;i--) */
-    /* { */
-    /*     std::cout<<((Send_buff[0] >> i) &  1); */
-    /* } */
-    /* cout<<endl; */
     memset(Send_buff,0,sizeof(Send_buff));
     if(id == g_totalpackage)
-        str_length = g_last_str;
+    {   str_length = g_last_str;
+        g_pack_length = g_last_str + count_head;
+        set_seq(1);
+    }
     else
     {
         str_length = 1024;
+        g_pack_length = str_length + count_head;
+        set_seq(0);
     }
     set_id(id);
     set_ack(0);
-    set_seq(0);
     insert_buf(buf);
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen();
@@ -200,29 +192,12 @@ u_short Rdt::cksum(u_short *buf,int count)
         }
     }
     sum = ~ (sum & 0xFFFF);
-    /* cout<< "校验和："; */
-    /* for(int i = 15;i >= 0;i--) */
-    /* { */
-    /*     std::cout<<((sum >> i) & 1) ; */
-    /* } */
-    /* cout<<endl; */
     // 将校验和高8位传给a
     a = sum >> 8;
     // 将校验和高8位和低8位进行交换并赋值给b
     b = sum & 0xFF;
-    /* cout<<"buff:"; */
     Send_buff[4] = a;
     Send_buff[5] = b;
-    /* for(int i = 7; i >= 0; i--) */
-    /* { */
-    /*     std::cout<< ((Send_buff[1] >> i) & 1); */
-    /* } */
-    /* cout<<"    "; */
-    /* for(int i = 7; i >= 0; i--) */
-    /* { */
-    /*     std::cout<< ((Send_buff[2] >> i) & 1); */
-    /* } */
-    /* cout<<endl; */
     return sum ;
 }
 
@@ -234,7 +209,7 @@ int  Rdt::check_cksum(char* buf)
     buf[4] = 0x0;
     buf[5] = 0x0;
     u_long sum = 0;
-    int count = count_head + get_strlen(buf);
+    int count = count_head + get_strlen((u_char*)buf);
     while(count--)
     {
         sum += *buf++;
@@ -259,15 +234,8 @@ int  Rdt::check_cksum(char* buf)
 void set_map(int id)
 {
     g_shave_id = id;
-    /* int j = id - have_id; */
-    /* if(j > 0) */
-    /* { */ 
-    /*     for(int i = j; i > 0;i--) */
-    /*     { */
-    /*         maprecv[have_id] = 1; */
-    /*         have_id++; */
-    /*     } */
+    /* if(g_shave_id <=  id) */
+    /* { */
+    /*     g_shave_id = id; */
     /* } */
-    /* else */ 
-    /*     return; */
 }

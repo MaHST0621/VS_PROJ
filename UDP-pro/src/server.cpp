@@ -30,7 +30,7 @@ void *recv_pthread(void *arg)
     socklen_t len = sizeof(src);
     while(1)
     {
-        int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen((char*)recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
+        int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen(recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
         printf("收到%d号包的反馈\n",Tread_rdt.get_id(recv_buff));
         if(recv_num < 0)
         {
@@ -41,7 +41,7 @@ void *recv_pthread(void *arg)
             if(Tread_rdt.check_cksum((char*)recv_buff))
             {
 
-                printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
+     //           printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
                 int sum = Tread_rdt.get_id(recv_buff);
                 pthread_mutex_lock(&mutex);
                 g_total_window++;
@@ -52,11 +52,6 @@ void *recv_pthread(void *arg)
             else
                 continue;
         }
-        /* if(recv_buff[2] == 0) */
-        /* { */
-        /*     printf("成功链接\n"); */
-        /*     acc = 1; */
-        /* } */
         else
             printf("包信息获取错误！\n");
             continue;
@@ -98,7 +93,7 @@ int main()
     char recv_buff[20];
     struct sockaddr_in addr_client;  
     Rdt Server;
-    ifstream file("1.jpg",ifstream::in|ios::binary);
+    ifstream file("test_file/1.jpg",ifstream::in|ios::binary);
     if(!file.is_open())
     {
             printf("文件无法打开！\n");
@@ -144,7 +139,7 @@ int main()
                     }
                     file.read(send_buff,1024);
                     Server.make_pak(g_count_id,send_buff);
-                    send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen((char*)Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
+                    send_num = sendto(sock_fd, Server.Send_buff, g_pack_length, 0, (struct sockaddr *)&addr_client, len);  
 
                     if(send_num < 0)
                     {
@@ -176,7 +171,7 @@ int main()
                         }
                         file.read(send_buff,1024);
                         Server.make_pak(i,send_buff);
-                        send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen((char*)Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
+                        send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen(Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
                         if(send_num < 0)
                         {
                         printf("发送报错！！\n");

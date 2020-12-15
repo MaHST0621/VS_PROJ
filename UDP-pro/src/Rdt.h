@@ -11,7 +11,7 @@ extern int g_acc;
 extern int g_last_str;
 extern int g_totalpackage;
 extern int g_Chave_id;
-
+extern int g_pack_length;
 class Rdt
 {
 public:
@@ -31,7 +31,7 @@ public:
     void    set_ack(int i);
     void    set_strlen();
     void    output_head(char* buf);
-    int     get_strlen(char* buf);
+    int     get_strlen(unsigned char* buf);
     void    set_id(int i);
 
 };
