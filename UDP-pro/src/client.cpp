@@ -98,8 +98,6 @@ int main()
                 {
                     fin_id = 1;
                 }
-                //u_char buff[Client.get_strlen((char*)recv_buff)];
-                //Client.output_buf((char*)recv_buff,(char*)buff);
                 out_result.write((char*)&recv_buff[Client.count_head],Client.get_strlen(recv_buff));
                 look_num = g_Chave_id + 1;
                 Client.make_pak(look_num,(char*)send_ack);

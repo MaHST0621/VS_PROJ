@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <iostream>
@@ -17,15 +18,13 @@ using namespace std;
 #define SERV_PORT   8000   
 #define SEND_BUFF   1032
 
-
 Rdt Tread_rdt;
-
+//多线程接受函数
 void *recv_pthread(void *arg)
 {
     printf("thread working!\n");
     u_char recv_buff[20];
     int sockid = (*(int *)arg);
-    
     struct sockaddr_in src;
     socklen_t len = sizeof(src);
     while(1)
@@ -41,12 +40,8 @@ void *recv_pthread(void *arg)
             if(Tread_rdt.check_cksum((char*)recv_buff))
             {
 
-     //           printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
+                /* printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff)); */
                 int sum = Tread_rdt.get_id(recv_buff);
-                pthread_mutex_lock(&mutex);
-                g_total_window++;
-                
-                pthread_mutex_unlock(&mutex);
                 set_map(sum);    
             }
             else
@@ -86,14 +81,15 @@ int main()
         perror("bind error:");  
         exit(1);  
     }   
-  
+    clock_t start_t , finish_t;
+    double duration;
     int send_num;
     char send_buff[1032];
     memset(send_buff,0,sizeof(send_buff));
     char recv_buff[20];
     struct sockaddr_in addr_client;  
     Rdt Server;
-    ifstream file("test_file/1.jpg",ifstream::in|ios::binary);
+    ifstream file("test_file/mm.jpg",ifstream::in|ios::binary);
     if(!file.is_open())
     {
             printf("文件无法打开！\n");
@@ -101,7 +97,7 @@ int main()
     }
     file.seekg(0,std::ios_base::end);
     int length = file.tellg();
-    g_totalpackage = length / 1024 + 1;
+    g_totalpackage = length / 1024 + 1; 
     g_last_str =  length - ((g_totalpackage - 1)* 1024 );
     printf("文件大小为%d bytes,总共有%d个数据包,最后一个包大小为%d\n",length,g_totalpackage,g_last_str);
     if(g_total_window >= g_totalpackage)
@@ -109,17 +105,19 @@ int main()
         g_total_window = g_totalpackage;
     }
     file.seekg(0,std::ios_base::beg);
-       while(1)  
+    while(1)  
         {  
             cout<<"----------------------------------------------------等待链接-----------------------------------------------------------------"<<endl;
             recvfrom(sock_fd, recv_buff, sizeof(recv_buff), 0, (struct sockaddr *)&addr_client, (socklen_t *)&len);    
             if(recv_buff[2] == 0)
             {
                 printf("成功链接\n");
-                g_acc = 1;
+                /* 是一个非ACK标识包说明是链接请求，我们需要包acc标识改为1使主线程进入发送模式 */
+                g_acc = 1; 
             }
             pthread_t tid;
             pthread_create(&tid,NULL,recv_pthread,(void *)(&sock_fd));
+            start_t = clock();
             while(1)
             {
                 if(g_acc != 1)
@@ -154,10 +152,10 @@ int main()
                     g_total_window--;
                     memset(send_buff,0,1024);
                 }
-                sleep(3);
+                usleep(1500000);
                 while(g_total_window == 0)
                 {
-                    printf("no\n");
+                    printf("%d号包超时\n",g_shave_id - 1);
                     if(g_shave_id == g_totalpackage)
                     {
                         break;
@@ -171,7 +169,7 @@ int main()
                         }
                         file.read(send_buff,1024);
                         Server.make_pak(i,send_buff);
-                        send_num = sendto(sock_fd, Server.Send_buff, Server.count_head + Server.get_strlen(Server.Send_buff), 0, (struct sockaddr *)&addr_client, len);  
+                        send_num = sendto(sock_fd, Server.Send_buff, g_pack_length, 0, (struct sockaddr *)&addr_client, len);  
                         if(send_num < 0)
                         {
                         printf("发送报错！！\n");
@@ -182,9 +180,11 @@ int main()
                 }  
 
             }
-            break;
+            break; 
         }  
-    
+    finish_t = clock();
+    duration = (double)(finish_t - start_t) / 1000;  
+    cout<<"吞吐率为："<<(double)(duration / (length*8));
     exit(1);
     close(sock_fd);  
             

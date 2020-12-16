@@ -10,6 +10,7 @@
 #include <time.h>
 #include "Rdt.h"
 using namespace std;
+//初始化滑动窗口的大小，当为1时是停等机制
 int g_total_window = 10;
 int g_count_id = 1;
 int g_shave_id = 0;
@@ -18,9 +19,10 @@ int g_last_str;
 int g_totalpackage;
 int g_Chave_id = 0;
 int g_pack_length = 0;
+int g_base_window = 0;  
 pthread_mutex_t mutex;
 
-
+//将包序号的int型用bitset转换为16位，并通过按位操作进行赋值
 void Rdt::set_id(int i)
 {
     bitset<16>  test(i);
@@ -68,7 +70,7 @@ int Rdt::get_strlen(u_char* buf)
 {
     u_short sum;
     //sum = (buf[6] << 8) | buf[7];
-    sum = 256*buf[6] + buf[7];
+    sum = 256*buf[6] + buf[7]; 
     return sum;
 }
 
@@ -88,7 +90,7 @@ void Rdt::output_head(char* buf)
 }
 
 
-//将消息长度放入报文头
+//与放包序函数一样将消息长度放入报文头
 void Rdt::set_strlen()
 {
     bitset<16>  test(str_length);
@@ -147,7 +149,6 @@ void Rdt::output_buf(char* buf,char* buff)
         buff[j] = buf[i];
     }
 }
-//提取消息分组编号
 int Rdt::get_id(u_char*  buf)
 {
     u_short sum;
@@ -155,14 +156,17 @@ int Rdt::get_id(u_char*  buf)
     return sum;
 
 }
+
 void Rdt::make_pak(int id,char* buf)
 {
     memset(Send_buff,0,sizeof(Send_buff));
+    /* 判断设置的包序是否是最后一个包，如果是那么我们将写入长度改为已经算好的值，并将其标记为最后一个包 */
     if(id == g_totalpackage)
     {   str_length = g_last_str;
         g_pack_length = g_last_str + count_head;
         set_seq(1);
     }
+    /* 如果不是最后一个包，那么我们将以规定好的包长度发送 */
     else
     {
         str_length = 1024;
@@ -170,7 +174,7 @@ void Rdt::make_pak(int id,char* buf)
         set_seq(0);
     }
     set_id(id);
-    set_ack(0);
+    set_ack(0); //这儿只用于发送端，接受到会在自己主线程设置ACK标志
     insert_buf(buf);
     cksum((u_short*)Send_buff,strlen(buf));
     set_strlen();
@@ -194,14 +198,14 @@ u_short Rdt::cksum(u_short *buf,int count)
     sum = ~ (sum & 0xFFFF);
     // 将校验和高8位传给a
     a = sum >> 8;
-    // 将校验和高8位和低8位进行交换并赋值给b
+    // 将校验和低8位传给a
     b = sum & 0xFF;
     Send_buff[4] = a;
     Send_buff[5] = b;
     return sum ;
 }
 
-
+//提取包中的16位校验和并清零再算一次校验和与之前提取的校验和做取反操作判断是否一样
 int  Rdt::check_cksum(char* buf)
 {
     u_short tmp;
@@ -233,9 +237,15 @@ int  Rdt::check_cksum(char* buf)
 
 void set_map(int id)
 {
-    g_shave_id = id;
-    /* if(g_shave_id <=  id) */
-    /* { */
-    /*     g_shave_id = id; */
-    /* } */
+    if(g_shave_id <= id)
+    {
+        g_shave_id = id;
+    }
+    if(g_base_window == id - 1)
+    {
+        pthread_mutex_lock(&mutex);
+        g_total_window++;
+        pthread_mutex_unlock(&mutex);
+        g_base_window++;
+    }
 }
