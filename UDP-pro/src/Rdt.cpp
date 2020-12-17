@@ -1,13 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <string.h>
-#include <iostream>
-#include <bitset>
-#include <pthread.h>
-#include <map>
-#include <time.h>
+#include "pch.h"
 #include "Rdt.h"
 using namespace std;
 //初始化滑动窗口的大小，当为1时是停等机制
@@ -21,7 +12,7 @@ int g_Chave_id = 0;
 int g_pack_length = 0;
 int g_base_window = 0;  
 pthread_mutex_t mutex;
-
+map<int,int> g_ack_count;
 //将包序号的int型用bitset转换为16位，并通过按位操作进行赋值
 void Rdt::set_id(int i)
 {
@@ -234,18 +225,5 @@ int  Rdt::check_cksum(char* buf)
     }
 
 }
+/*--------------------------------------------------------------------------类函数结束------------------------------------------------------------------------------------*/
 
-void set_map(int id)
-{
-    if(g_shave_id <= id)
-    {
-        g_shave_id = id;
-    }
-    if(g_base_window == id - 1)
-    {
-        pthread_mutex_lock(&mutex);
-        g_total_window++;
-        pthread_mutex_unlock(&mutex);
-        g_base_window++;
-    }
-}

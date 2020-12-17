@@ -1,16 +1,3 @@
-#include <stdio.h>   
-#include <string.h>   
-#include <errno.h>   
-#include <stdlib.h>   
-#include <unistd.h>   
-#include <sys/types.h>   
-#include <sys/socket.h>   
-#include <netinet/in.h>   
-#include <arpa/inet.h>   
-#include <iostream>
-#include <bitset>
-#include <fstream>
-#include <map>
 #include "Rdt.h"
 using namespace std;
 #define DEST_PORT 8000   

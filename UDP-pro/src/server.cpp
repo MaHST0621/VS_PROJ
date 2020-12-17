@@ -1,18 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <iostream>
-#include <bitset>
-#include <fstream>
-#include <pthread.h>
-#include <map>
-#include <time.h>
 #include "Rdt.h"
 using namespace std;
 #define SERV_PORT   8000   

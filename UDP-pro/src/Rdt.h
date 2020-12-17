@@ -1,4 +1,4 @@
-#include <pthread.h>
+#include "pch.h"
 #ifndef __Rdt__
 #define __Rdt__
 //发送端收到的最大ACK
@@ -20,6 +20,9 @@ extern int g_Chave_id;
 //发送端发送的包长度
 extern int g_pack_length;
 extern int g_base_window;
+extern std::map<int,int> g_ack_count;
+extern int g_cwnd;
+extern int g_ssthresh;
 class Rdt
 {
 public:
@@ -44,7 +47,7 @@ public:
 
 };
 
-void set_map(int i); //用于快重传的函数，但在前两次作业只是用于改变g_shave_id的函数
+void set_map(int i); //用于快重传的函数，在前两次作业只是用于改变g_shave_id的函数
 
 
 #endif
