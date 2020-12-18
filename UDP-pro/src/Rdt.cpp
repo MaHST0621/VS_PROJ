@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "Rdt.h"
-#include "Cwn.h"
+#include "Reno.h"
 using namespace std;
 //初始化滑动窗口的大小，当为1时是停等机制
-int g_total_window = g_cwnd;
+int g_total_window = 10;
 int g_count_id = 1;
 int g_shave_id = 0;
 int g_acc = 0;
@@ -13,7 +13,7 @@ int g_Chave_id = 0;
 int g_pack_length = 0;
 int g_base_window = 0;  
 pthread_mutex_t mutex;
-map<int,int> g_ack_count;
+char g_window_key = 'G';
 //将包序号的int型用bitset转换为16位，并通过按位操作进行赋值
 void Rdt::set_id(int i)
 {

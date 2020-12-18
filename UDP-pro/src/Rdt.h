@@ -20,7 +20,7 @@ extern int g_Chave_id;
 //发送端发送的包长度
 extern int g_pack_length;
 extern int g_base_window;
-extern std::map<int,int> g_ack_count;
+extern char g_window_key;
 
 class Rdt
 {

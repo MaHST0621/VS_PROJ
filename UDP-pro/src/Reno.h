@@ -12,6 +12,7 @@ extern int g_count_ack;
 //已使用的窗口数量
 extern int g_send_count;
 
+extern std::map<int,int> g_ack_count;
 
 void set_map(int i); //用于快重传的函数，在前两次作业只是用于改变g_shave_id的函数
 void avoidjam();
