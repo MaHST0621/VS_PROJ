@@ -1,4 +1,5 @@
 #include "Rdt.h"
+#include "Cwn.h"
 using namespace std;
 #define SERV_PORT   8000   
 #define SEND_BUFF   1032
@@ -140,6 +141,7 @@ int main()
                 usleep(1500000);
                 while(g_total_window == 0)
                 {
+                    sleep(5);
                     printf("%d号包超时\n",g_shave_id - 1);
                     if(g_shave_id == g_totalpackage)
                     {

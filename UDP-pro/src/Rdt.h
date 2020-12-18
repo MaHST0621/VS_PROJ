@@ -21,8 +21,7 @@ extern int g_Chave_id;
 extern int g_pack_length;
 extern int g_base_window;
 extern std::map<int,int> g_ack_count;
-extern int g_cwnd;
-extern int g_ssthresh;
+
 class Rdt
 {
 public:
@@ -47,7 +46,6 @@ public:
 
 };
 
-void set_map(int i); //用于快重传的函数，在前两次作业只是用于改变g_shave_id的函数
 
 
 #endif
