@@ -4,8 +4,10 @@
 int g_count_ack = 0;
 int g_cwnd = 1;
 int g_ssthresh = 18;  
+int g_send_count = 0;
 void set_map(int id)
 {
+    g_send_count--;
     if(g_shave_id <= id)
     {
         g_shave_id = id;
@@ -39,7 +41,7 @@ void slowstart()
 {
     pthread_mutex_lock(&mutex);
     g_cwnd = g_cwnd + 1;
-    g_total_window = g_cwnd;
+    g_total_window = g_cwnd - g_send_count;
     pthread_mutex_unlock(&mutex);
 }
 //拥塞控制：避免拥塞
@@ -50,7 +52,7 @@ void avoidjam()
     {
         pthread_mutex_lock(&mutex);
         g_cwnd++;
-        g_total_window = g_cwnd;
+        g_total_window = g_cwnd - g_send_count;
         pthread_mutex_unlock(&mutex);
         g_count_ack = 0;
     }

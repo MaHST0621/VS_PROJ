@@ -136,6 +136,7 @@ int main()
                     }
                     g_count_id++;
                     g_total_window--;
+                    g_send_count++;
                     memset(send_buff,0,1024);
                 }
                 usleep(1500000);
