@@ -4,41 +4,6 @@ using namespace std;
 #define SERV_PORT   8000   
 #define SEND_BUFF   1032
 
-Rdt Tread_rdt;
-//多线程接受函数
-void *recv_pthread(void *arg)
-{
-    printf("thread working!\n");
-    u_char recv_buff[20];
-    int sockid = (*(int *)arg);
-    struct sockaddr_in src;
-    socklen_t len = sizeof(src);
-    while(1)
-    {
-        int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen(recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
-        printf("收到%d号包的反馈\n",Tread_rdt.get_id(recv_buff));
-        if(recv_num < 0)
-        {
-            printf("接收报错！\n");
-        }
-        if(recv_buff[2] == 1)
-        {
-            if(Tread_rdt.check_cksum((char*)recv_buff))
-            {
-
-                /* printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff)); */
-                int sum = Tread_rdt.get_id(recv_buff);
-                set_map(sum);    
-            }
-            else
-                continue;
-        }
-        else
-            printf("包信息获取错误！\n");
-            continue;
-    }
-}
-
 
 
 int main()  
@@ -104,12 +69,20 @@ int main()
             pthread_t tid;
             pthread_create(&tid,NULL,recv_pthread,(void *)(&sock_fd));
             start_t = clock();
+            if(g_acc != 1)
+            {
+                continue;
+            }
+            printf("请输入算法：");
+            cin >> g_window_key;
+            if(g_window_key == 'G')
+            {
+                printf("请输入窗口数：");
+                cin >> g_total_window;
+            }
+            
             while(1)
             {
-                if(g_acc != 1)
-                {
-                    continue;
-                }
                 if(g_shave_id == g_totalpackage)
                 {
                     break;

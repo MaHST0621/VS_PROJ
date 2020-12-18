@@ -3,7 +3,7 @@
 #include "Reno.h"
 using namespace std;
 //初始化滑动窗口的大小，当为1时是停等机制
-int g_total_window = 10;
+int g_total_window = 1 ;
 int g_count_id = 1;
 int g_shave_id = 0;
 int g_acc = 0;
