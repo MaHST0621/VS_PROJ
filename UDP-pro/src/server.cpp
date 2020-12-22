@@ -51,10 +51,6 @@ int main()
     g_totalpackage = length / 1024 + 1; 
     g_last_str =  length - ((g_totalpackage - 1)* 1024 );
     printf("文件大小为%d bytes,总共有%d个数据包,最后一个包大小为%d\n",length,g_totalpackage,g_last_str);
-    if(g_total_window >= g_totalpackage)
-    {
-        g_total_window = g_totalpackage;
-    }
     file.seekg(0,std::ios_base::beg);
     while(1)  
         {  
@@ -73,14 +69,12 @@ int main()
             {
                 continue;
             }
-            printf("请输入算法：");
-            cin >> g_window_key;
-            if(g_window_key == 'G')
+            printf("请输入窗口数：");
+            cin >> g_total_window;
+            if(g_total_window >= g_totalpackage)
             {
-                printf("请输入窗口数：");
-                cin >> g_total_window;
+                g_total_window = g_totalpackage;
             }
-            
             while(1)
             {
                 if(g_shave_id == g_totalpackage)
@@ -109,25 +103,20 @@ int main()
                     }
                     g_count_id++;
                     g_total_window--;
-                    g_send_count++;
                     memset(send_buff,0,1024);
                 }
                 usleep(1500000);
                 while(g_total_window == 0)
                 {
                     sleep(5);
-                    printf("%d号包超时\n",g_shave_id - 1);
+                    printf("%d号包超时\n",g_shave_id + 1);
                     if(g_shave_id == g_totalpackage)
                     {
                         break;
                     }
                     file.seekg((g_shave_id * 1024) ,std::ios_base::beg);
-                    for(int i = g_shave_id ; i < g_count_id;i++)
+                    for(int i = g_shave_id + 1; i < g_count_id;i++)
                     {
-                        if(g_shave_id == 0)
-                        {
-                            i = i+1;
-                        }
                         file.read(send_buff,1024);
                         Server.make_pak(i,send_buff);
                         send_num = sendto(sock_fd, Server.Send_buff, g_pack_length, 0, (struct sockaddr *)&addr_client, len);  

@@ -32,6 +32,7 @@ int main()
     int recv_num;  
     int look_num;
     int fin_id = 0;
+    int key = 0;
     Rdt Client;
     u_char send_buff[15] = "i am here!!";  
     u_char send_ack[1];
@@ -65,7 +66,11 @@ int main()
         }
         recv_num = recvfrom(sock_fd, recv_buff,1032, 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
         printf("收到%d号包\n",Client.get_id(recv_buff));
-
+        if(Client.get_id(recv_buff) == 40 && key <= 2)
+        {
+            key++;
+            continue;
+        }
         printf("client receive %d bytes\n", recv_num);
 
         cout<<Client.get_strlen(recv_buff)<<endl;
