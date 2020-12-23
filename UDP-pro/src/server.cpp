@@ -92,6 +92,7 @@ int main()
                     Server.make_pak(g_count_id,send_buff);
                     send_num = sendto(sock_fd, Server.Send_buff, g_pack_length, 0, (struct sockaddr *)&addr_client, len);  
 
+                    Server.output_head((char*)Server.Send_buff);
                     if(send_num < 0)
                     {
                         printf("%d号包发送报错！！\n",Server.get_id(Server.Send_buff));

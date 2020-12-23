@@ -11,9 +11,7 @@ int g_last_str;
 int g_totalpackage;
 int g_Chave_id = 0;
 int g_pack_length = 0;
-int g_base_window = 0;  
 pthread_mutex_t mutex;
-char g_window_key = 'G';
 //将包序号的int型用bitset转换为16位，并通过按位操作进行赋值
 void Rdt::set_id(int i)
 {
@@ -198,7 +196,7 @@ u_short Rdt::cksum(u_short *buf,int count)
 }
 
 //提取包中的16位校验和并清零再算一次校验和与之前提取的校验和做取反操作判断是否一样
-int  Rdt::check_cksum(char* buf)
+int  Rdt::check_cksum(u_char *buf)
 {
     u_short tmp;
     tmp = (buf[4] << 8) | buf[5];
@@ -215,7 +213,7 @@ int  Rdt::check_cksum(char* buf)
             sum++;
         }
     }
-    sum = ~(sum & 0xFFFF);
+    //sum = ~(sum & 0xFFFF);
     if((sum) ^ (tmp))
     {
         return 1;

@@ -19,8 +19,6 @@ extern int g_totalpackage;
 extern int g_Chave_id;
 //发送端发送的包长度
 extern int g_pack_length;
-extern int g_base_window;
-extern char g_window_key;
 
 class Rdt
 {
@@ -31,7 +29,7 @@ public:
 
 public:
     unsigned short cksum(unsigned short *buf,int count); //校验和的运算函数
-    int     check_cksum(char* buf); //校验和的验证函数
+    int     check_cksum(unsigned char *buf); //校验和的验证函数
     void    make_pak(int id,char* buf); //打包报文的函数
     int     get_id(unsigned char* buf); //获取包序的函数
     void    set_seq(int i); //设置包类型的标识（在这里只是用于标记最后一个包）

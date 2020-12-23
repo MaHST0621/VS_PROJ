@@ -74,7 +74,6 @@ int main()
         printf("client receive %d bytes\n", recv_num);
 
         cout<<Client.get_strlen(recv_buff)<<endl;
-        //Client.output_head((char*)recv_buff);
         if(recv_num < 0)  
         {  
             perror("接受报错:");  
@@ -82,7 +81,7 @@ int main()
         }  
         if(Client.get_id(recv_buff) == (g_Chave_id + 1))
         {
-            if(Client.check_cksum((char*)recv_buff))
+            if(Client.check_cksum(recv_buff))
             {
 
                 cout<<"----------------------------------------------------- 正确接受，发送ACK----------------------------------------------------"<<endl;

@@ -2,10 +2,12 @@
 #include "Reno.h"
 
 int g_count_ack = 0;
-int g_cwnd = 1;
-int g_ssthresh = 18;  
-int g_send_count = 0;
-
+double g_cwnd = 1;
+double g_Mss = 1;
+int g_base_window = 1;
+double g_ssthresh = 18;  
+Status g_Cwn_key = SlowStart;
+bool g_Recover_Key = false;
 std::map<int,int> g_ack_count;
 Rdt Tread_rdt;
 
@@ -30,7 +32,7 @@ void *recv_pthread(void *arg)
         }
         if(recv_buff[2] == 1)
         {
-            if(Tread_rdt.check_cksum((char*)recv_buff))
+            if(Tread_rdt.check_cksum(recv_buff))
             {
 
                 /* printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff)); */
@@ -45,11 +47,8 @@ void *recv_pthread(void *arg)
             continue;
     }
 }
-
-
 void set_map(int id)
 {
-    g_send_count--;
     if(g_shave_id <= id)
     {
         g_shave_id = id;
@@ -64,5 +63,215 @@ void set_map(int id)
     }
 }
 
+/* ------------------------------------------------------------------3-3相关函数---------------------------------------------------------------------------------------- */
+bool Is_DupAck(int i)
+{
+    std::map<int, int>::iterator it = g_ack_count.find(i);
+    return it != g_ack_count.end();
+}
+//慢启动时Ack操作函数
+void SlowStart_Cwn(int i)
+{
+    if(!Is_DupAck(i))
+    {
+        return;
+    }
+    g_ack_count[i]++;
+    if(g_ack_count[i] >= 4)
+    {
+        g_ssthresh = g_cwnd / 2;
+        g_cwnd = g_ssthresh + 3;
+        g_Recover_Key = true;
 
+        g_Cwn_key = Quick_Recover;
+    }
+}
+//慢启动时收到新的Ack
+void SlowStart_NewAck_Cwn(int i)
+{
+    if(!Is_DupAck(i))
+    {
+        return;
+    }
 
+    g_cwnd = g_cwnd + 1;
+    g_ack_count.clear();
+    g_Recover_Key = false;
+    if(g_cwnd >= g_ssthresh)
+    {
+        g_Cwn_key = Avoid_Dup;
+    }
+}
+//慢启动超时处理
+void SlowStart_TimeOut_Cwn()
+{
+    g_ssthresh = g_cwnd / 2;
+    g_cwnd = 1;
+    g_Recover_Key = false;
+    g_ack_count.clear();
+}
+//快速回复Ack处理函数
+void Quick_Recover_Cwn(int i)
+{
+    if(!Is_DupAck(i))
+    {
+        return;
+    }
+    g_cwnd = g_cwnd + 1;
+}
+//快速回复收到新的ACK
+void Quick_Recover_NewAck_Cwn(int i)
+{
+    if(!Is_DupAck(i))
+    {
+        return;
+    }
+    g_cwnd = g_ssthresh;
+    g_ack_count.clear();
+    g_Recover_Key = false;
+    g_ack_count[i] = 1;
+    g_Cwn_key = Avoid_Dup;
+}
+//快速回复包序号超时
+void Quick_Recover_TimeOut_Cwn()
+{
+    g_ssthresh = g_cwnd / 2;
+    g_cwnd = 1;
+    g_ack_count.clear();
+    g_Recover_Key = false;
+    g_Recover_Key = SlowStart;
+}
+//拥塞避免在冗余Ack时的操作
+void Avoid_Dup_Cwn(int i)
+{
+    if(!Is_DupAck(i))
+    {
+        return;
+    }
+    if(g_ack_count[i] >= 4)
+    {
+        g_ssthresh = g_cwnd / 2;
+        g_cwnd = g_ssthresh + 3;
+        g_Recover_Key = true;
+        g_Cwn_key = Quick_Recover;
+    }
+}
+//拥塞避免遇到新的Ack操作
+void Avoid_Dup_NewAck_Cwn(int i)
+{
+    if(!Is_DupAck(i))
+    {
+        return;
+    }
+    g_cwnd = g_cwnd + g_Mss * g_Mss / g_cwnd;
+    g_ack_count.clear();
+    g_Recover_Key = false;
+    g_ack_count[i] = 1;
+
+}
+//拥塞避免包序超时
+void Avoid_Dup_TimeOut_Cwn()
+{
+    g_ssthresh = g_cwnd / 2;
+    g_cwnd = 1;
+    g_ack_count.clear();
+    g_Recover_Key = false;
+
+    g_Cwn_key = SlowStart;
+}
+void Cwn_DupAck(int i)
+{
+    switch (g_Cwn_key)
+    {
+    case SlowStart:{
+                       return SlowStart_Cwn(i);
+                   }
+    case Avoid_Dup:{
+                       return Avoid_Dup_Cwn(i);
+                   }
+    case Quick_Recover:{
+                           return Quick_Recover_Cwn(i);
+                       }
+    }
+    
+}
+void Cwn_NewAck(int i)
+{
+    switch (g_Cwn_key){
+    case SlowStart:{
+                       return SlowStart_NewAck_Cwn(i);
+                   }
+    case Avoid_Dup:{
+                       return Avoid_Dup_NewAck_Cwn(i);
+                   }
+    case Quick_Recover:{
+                           return Quick_Recover_NewAck_Cwn(i);
+                       }
+    }
+}
+void Cwn_TimeOut()
+{
+    switch (g_Cwn_key){
+    case SlowStart:{
+                       return SlowStart_TimeOut_Cwn(); 
+                   }
+    case Avoid_Dup:{
+                       return Avoid_Dup_TimeOut_Cwn();
+                   }
+    case Quick_Recover:{
+                           return Quick_Recover_TimeOut_Cwn();
+                       }
+    }
+}
+void set_map_RENO(int id)
+{
+    if(g_shave_id <= id)
+    {
+        g_shave_id = id;
+    }
+    printf("拥塞控制\n");
+    g_base_window = id + 1;
+    if(Is_DupAck(g_base_window))
+    {
+       Cwn_DupAck(g_base_window); 
+    }
+    else
+    {
+        Cwn_NewAck(g_base_window);
+    }
+}
+//RENO多线程接受函数
+void *recv_pthread_RENO(void *arg)
+{
+    //printf("thread working!\n");
+    u_char recv_buff[20];
+    int sockid = (*(int *)arg);
+    struct sockaddr_in src;
+    socklen_t len = sizeof(src);
+    while(1)
+    {
+        int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen(recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
+        printf("3收到%d号包的反馈\n",Tread_rdt.get_id(recv_buff));
+        if(recv_num < 0)
+        {
+            printf("接收报错！\n");
+        }
+        if(recv_buff[2] == 1)
+        {
+            if(Tread_rdt.check_cksum(recv_buff))
+            {
+
+                printf("3对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
+                int sum = Tread_rdt.get_id(recv_buff);
+                pthread_mutex_lock(&mutex);
+                set_map_RENO(sum);    
+                pthread_mutex_unlock(&mutex);
+            }
+            else
+                continue;
+        }
+        else
+            printf("包信息获取错误！\n");
+            continue;
+    }
+}
