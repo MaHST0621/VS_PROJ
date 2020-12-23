@@ -19,7 +19,6 @@ extern int g_totalpackage;
 extern int g_Chave_id;
 //发送端发送的包长度
 extern int g_pack_length;
-
 class Rdt
 {
 public:

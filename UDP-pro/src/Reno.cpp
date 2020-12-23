@@ -1,9 +1,8 @@
-#include "Rdt.h"
 #include "Reno.h"
-
 int g_count_ack = 0;
 double g_cwnd = 1;
 double g_Mss = 1;
+int TIME_LIMIT = 15000;
 int g_base_window = 1;
 double g_ssthresh = 18;  
 Status g_Cwn_key = SlowStart;
@@ -239,6 +238,14 @@ void set_map_RENO(int id)
     {
         Cwn_NewAck(g_base_window);
     }
+    if(g_base_window == g_count_id)
+    {
+        g_time_key = false;
+    }
+    else
+    {
+        ReSet_Timer();
+    }
 }
 //RENO多线程接受函数
 void *recv_pthread_RENO(void *arg)
@@ -274,4 +281,40 @@ void *recv_pthread_RENO(void *arg)
             printf("包信息获取错误！\n");
             continue;
     }
+}
+
+/*---------------------------------------------------------------------------Timer----------------------------------------------------------------------------*/
+bool g_time_key = false;
+clock_t g_begin;
+clock_t g_end;
+void *timer_pthread_RENO(void *arg)
+{
+    printf("i am called!\n");
+    int Time = *(int*)arg;
+    g_begin = clock();
+    pthread_mutex_lock(&mutex);
+    g_time_key = false;
+    pthread_mutex_unlock(&mutex);
+
+    while(1)
+    {
+        g_end = clock();
+        if((g_end - g_begin) > Time)
+        {
+            printf("发生超时！\n");
+            pthread_mutex_lock(&mutex);
+            g_time_key = true;
+            pthread_mutex_unlock(&mutex);
+        }
+        usleep(Time);
+    }
+    return 0;
+}
+
+
+void ReSet_Timer()
+{
+    printf("i am called too \n");
+    g_begin = clock();
+    g_time_key = false;
 }

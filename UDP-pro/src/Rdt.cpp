@@ -1,6 +1,4 @@
-#include "pch.h"
 #include "Rdt.h"
-#include "Reno.h"
 using namespace std;
 //初始化滑动窗口的大小，当为1时是停等机制
 int g_total_window = 5;

@@ -1,7 +1,14 @@
-#include "pch.h"
 #include "Rdt.h"
 #ifndef Cwm_H
 #define Cwm_H
+extern std::map<int,int> g_ack_count;
+
+void set_map(int i); //用于快重传的函数，在前两次作业只是用于改变g_shave_id的函数
+void *recv_pthread(void *arg); //多线程接收函数
+
+
+/*-----------------------------------------------------------------作业3-3------------------------------------------------------------------------------------*/
+
 enum Status
 {
     SlowStart,
@@ -15,10 +22,7 @@ extern double g_Mss;
 extern double g_cwnd;
 extern double g_ssthresh;
 extern int g_base_window;
-extern std::map<int,int> g_ack_count;
 
-void set_map(int i); //用于快重传的函数，在前两次作业只是用于改变g_shave_id的函数
-void *recv_pthread(void *arg); //多线程接收函数
 
 void set_map_RENO(int i); //用于快重传的函数，在前两次作业只是用于改变g_shave_id的函数
 void *recv_pthread_RENO(void *arg); //RENO多线程接收函数
@@ -35,4 +39,13 @@ void Avoid_Dup_TimeOut_Cwn();
 void Quick_Recover_Cwn(int i);
 void Quick_Recover_NewAck_Cwn(int i);
 void Quick_Recover_TimeOut_Cwn();
+
+/*-------------------------------------------------------------------------Timer---------------------------------------------------------------------------------*/
+extern bool g_time_key;
+extern clock_t g_begin; 
+extern clock_t g_end;
+extern int TIME_LIMIT;
+void *timer_pthread_RENO(void *arg);
+extern void ReSet_Timer();
+
 #endif
