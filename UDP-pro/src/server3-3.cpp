@@ -143,6 +143,7 @@ int main()
                     pthread_mutex_unlock(&mutex);
 
                     pthread_mutex_lock(&mutex);
+                    Cwn_TimeOut();
                     file.seekg(((g_base_window - 1) * 1024) ,std::ios_base::beg);
                     for(int i = g_base_window; i < g_count_id;i++)
                     {
@@ -161,10 +162,9 @@ int main()
                     }
                     pthread_mutex_unlock(&mutex);
                 }
-                printf("test1\n");
                 pthread_mutex_lock(&mutex);
                 printf("base:%d, next:%d\n",g_base_window,g_count_id);
-                printf("sst:%f, cwnd:%d\n",g_cwnd,g_count_id);
+                printf("sst:%f, cwnd:%f\n",g_ssthresh,g_cwnd);
                 pthread_mutex_unlock(&mutex);
             }
             break; 

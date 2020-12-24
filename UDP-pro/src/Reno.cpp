@@ -88,7 +88,7 @@ void SlowStart_Cwn(int i)
 //慢启动时收到新的Ack
 void SlowStart_NewAck_Cwn(int i)
 {
-    if(!Is_DupAck(i))
+    if(Is_DupAck(i))
     {
         return;
     }
@@ -121,7 +121,7 @@ void Quick_Recover_Cwn(int i)
 //快速回复收到新的ACK
 void Quick_Recover_NewAck_Cwn(int i)
 {
-    if(!Is_DupAck(i))
+    if(Is_DupAck(i))
     {
         return;
     }
@@ -143,11 +143,11 @@ void Quick_Recover_TimeOut_Cwn()
 //拥塞避免在冗余Ack时的操作
 void Avoid_Dup_Cwn(int i)
 {
-    if(!Is_DupAck(i))
+    if(Is_DupAck(i))
     {
         return;
     }
-    if(g_ack_count[i] >= 4)
+    if(g_ack_count[i] == 4)
     {
         g_ssthresh = g_cwnd / 2;
         g_cwnd = g_ssthresh + 3;
@@ -158,7 +158,7 @@ void Avoid_Dup_Cwn(int i)
 //拥塞避免遇到新的Ack操作
 void Avoid_Dup_NewAck_Cwn(int i)
 {
-    if(!Is_DupAck(i))
+    if(Is_DupAck(i))
     {
         return;
     }
@@ -230,13 +230,13 @@ void set_map_RENO(int id)
     }
     printf("拥塞控制\n");
     g_base_window = id + 1;
-    if(Is_DupAck(g_base_window))
+    if(Is_DupAck(id))
     {
-       Cwn_DupAck(g_base_window); 
+       Cwn_DupAck(id); 
     }
     else
     {
-        Cwn_NewAck(g_base_window);
+        Cwn_NewAck(id);
     }
     if(g_base_window == g_count_id)
     {
