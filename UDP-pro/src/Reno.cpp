@@ -96,6 +96,7 @@ void SlowStart_NewAck_Cwn(int i)
     g_cwnd = g_cwnd + 1;
     g_ack_count.clear();
     g_Recover_Key = false;
+    g_ack_count[i] = 1;
     if(g_cwnd >= g_ssthresh)
     {
         g_Cwn_key = Avoid_Dup;
@@ -116,6 +117,7 @@ void Quick_Recover_Cwn(int i)
     {
         return;
     }
+    printf("quick_dup-1\n");
     g_cwnd = g_cwnd + 1;
 }
 //快速回复收到新的ACK
@@ -143,10 +145,11 @@ void Quick_Recover_TimeOut_Cwn()
 //拥塞避免在冗余Ack时的操作
 void Avoid_Dup_Cwn(int i)
 {
-    if(Is_DupAck(i))
+    if(!Is_DupAck(i))
     {
         return;
     }
+    g_ack_count[i]++;
     if(g_ack_count[i] == 4)
     {
         g_ssthresh = g_cwnd / 2;
@@ -154,6 +157,7 @@ void Avoid_Dup_Cwn(int i)
         g_Recover_Key = true;
         g_Cwn_key = Quick_Recover;
     }
+    printf("avoid_ack_count%d\n",g_ack_count[i]);
 }
 //拥塞避免遇到新的Ack操作
 void Avoid_Dup_NewAck_Cwn(int i)
@@ -183,13 +187,16 @@ void Cwn_DupAck(int i)
     switch (g_Cwn_key)
     {
     case SlowStart:{
+                       printf("slowstart_dup\n");
                        return SlowStart_Cwn(i);
                    }
     case Avoid_Dup:{
+                       printf("Avoid_dup\n");
                        return Avoid_Dup_Cwn(i);
                    }
     case Quick_Recover:{
-                           return Quick_Recover_Cwn(i);
+                            printf("Qucik_dup\n");
+                            return Quick_Recover_Cwn(i);
                        }
     }
     
@@ -198,13 +205,16 @@ void Cwn_NewAck(int i)
 {
     switch (g_Cwn_key){
     case SlowStart:{
-                       return SlowStart_NewAck_Cwn(i);
+                        printf("slowstart_new\n");
+                        return SlowStart_NewAck_Cwn(i);
                    }
     case Avoid_Dup:{
-                       return Avoid_Dup_NewAck_Cwn(i);
+                        printf("Avoidt_new\n");
+                        return Avoid_Dup_NewAck_Cwn(i);
                    }
     case Quick_Recover:{
-                           return Quick_Recover_NewAck_Cwn(i);
+                        printf("quick_new\n");
+                        return Quick_Recover_NewAck_Cwn(i);
                        }
     }
 }
@@ -212,6 +222,7 @@ void Cwn_TimeOut()
 {
     switch (g_Cwn_key){
     case SlowStart:{
+                       printf("slowstart_timeou\n");
                        return SlowStart_TimeOut_Cwn(); 
                    }
     case Avoid_Dup:{
@@ -232,10 +243,12 @@ void set_map_RENO(int id)
     g_base_window = id + 1;
     if(Is_DupAck(id))
     {
-       Cwn_DupAck(id); 
+        printf("Dup_Ack\n");
+        Cwn_DupAck(id); 
     }
     else
     {
+        printf("New_Ack\n");
         Cwn_NewAck(id);
     }
     if(g_base_window == g_count_id)
@@ -258,7 +271,7 @@ void *recv_pthread_RENO(void *arg)
     while(1)
     {
         int recv_num = recvfrom(sockid,recv_buff, Tread_rdt.get_strlen(recv_buff) + Tread_rdt.count_head, 0, (struct sockaddr *)&src, (socklen_t *)&len);    
-        printf("3收到%d号包的反馈\n",Tread_rdt.get_id(recv_buff));
+        printf("收到%d号包的反馈\n",Tread_rdt.get_id(recv_buff));
         if(recv_num < 0)
         {
             printf("接收报错！\n");
@@ -268,7 +281,7 @@ void *recv_pthread_RENO(void *arg)
             if(Tread_rdt.check_cksum(recv_buff))
             {
 
-                printf("3对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
+                printf("对方已成功接受%d号包序!\n",Tread_rdt.get_id(recv_buff));
                 int sum = Tread_rdt.get_id(recv_buff);
                 pthread_mutex_lock(&mutex);
                 set_map_RENO(sum);    
@@ -289,7 +302,6 @@ clock_t g_begin;
 clock_t g_end;
 void *timer_pthread_RENO(void *arg)
 {
-    printf("i am called!\n");
     int Time = *(int*)arg;
     g_begin = clock();
     pthread_mutex_lock(&mutex);
@@ -306,7 +318,7 @@ void *timer_pthread_RENO(void *arg)
             g_time_key = true;
             pthread_mutex_unlock(&mutex);
         }
-        usleep(Time);
+        usleep(Time / 10);
     }
     return 0;
 }

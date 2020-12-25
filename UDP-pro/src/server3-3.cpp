@@ -93,7 +93,7 @@ int main()
                         }
                         else
                         {
-                            printf("%d号包重发成功!\n",Server.get_id(Server.Send_buff));
+                            printf("%d号包重发成功! %d\n",Server.get_id(Server.Send_buff),g_base_window - 1);
                         }
                     }
                     g_Recover_Key = false;
@@ -104,7 +104,6 @@ int main()
 
                 pthread_mutex_lock(&mutex);
                 
-                printf("test2\n");
                 if(g_count_id < g_base_window + g_cwnd && g_count_id <= g_totalpackage)
                 {
                     file.read(send_buff,1024);
@@ -121,12 +120,9 @@ int main()
                     memset(send_buff,0,1024);
                     if(g_base_window == g_count_id)
                     {
-                        printf("test110\n");
                         ReSet_Timer();
-                        printf("test110\n");
                     }
                     g_count_id++;
-                    printf("test3\n");
                     pthread_mutex_unlock(&mutex);
                 }
                 else
@@ -135,7 +131,6 @@ int main()
                     printf("没有窗口可用了\n");
                     pthread_mutex_unlock(&mutex);
                 }
-                printf("test1\n");
                 if(g_time_key)
                 {
                     pthread_mutex_lock(&mutex);

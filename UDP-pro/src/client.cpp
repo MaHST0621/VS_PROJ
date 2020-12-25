@@ -32,7 +32,7 @@ int main()
     int recv_num;  
     int look_num;
     int fin_id = 0;
-    int key = 0;
+    int key = 1;
     Rdt Client;
     u_char send_buff[15] = "i am here!!";  
     u_char send_ack[1];
@@ -66,12 +66,12 @@ int main()
         }
         recv_num = recvfrom(sock_fd, recv_buff,1032, 0, (struct sockaddr *)&addr_serv, (socklen_t *)&len);  
         printf("收到%d号包\n",Client.get_id(recv_buff));
-        if(Client.get_id(recv_buff) == 4 && key <= 2)
+        if(Client.get_id(recv_buff) == 4 && key == 1)
         {
             key++;
             continue;
         }
-        if(Client.get_id(recv_buff) == 40 && key <= 5)
+        if(Client.get_id(recv_buff) == 40 && key == 2)
         {
             key++;
             continue;
@@ -117,7 +117,12 @@ int main()
         
         }
         else
-        {
+        {       
+            look_num = g_Chave_id;
+            Client.make_pak(look_num,(char*)send_ack);
+            Client.set_ack(1);
+            sendto(sock_fd, Client.Send_buff,8, 0, (struct sockaddr *)&addr_serv, len);  
+            memset(recv_buff,0,1032);
             printf("不是期望包\n");
             continue;
         }
