@@ -326,7 +326,6 @@ void *timer_pthread_RENO(void *arg)
 
 void ReSet_Timer()
 {
-    printf("i am called too \n");
     g_begin = clock();
     g_time_key = false;
 }

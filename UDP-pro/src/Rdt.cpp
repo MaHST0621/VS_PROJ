@@ -9,6 +9,7 @@ int g_last_str;
 int g_totalpackage;
 int g_Chave_id = 0;
 int g_pack_length = 0;
+int g_out_pack = 0;
 pthread_mutex_t mutex;
 //将包序号的int型用bitset转换为16位，并通过按位操作进行赋值
 void Rdt::set_id(int i)
@@ -152,6 +153,7 @@ void Rdt::make_pak(int id,char* buf)
     if(id == g_totalpackage)
     {   str_length = g_last_str;
         g_pack_length = g_last_str + count_head;
+        g_out_pack = g_out_pack + str_length;
         set_seq(1);
     }
     /* 如果不是最后一个包，那么我们将以规定好的包长度发送 */
@@ -159,6 +161,7 @@ void Rdt::make_pak(int id,char* buf)
     {
         str_length = 1024;
         g_pack_length = str_length + count_head;
+        g_out_pack = g_out_pack + str_length;
         set_seq(0);
     }
     set_id(id);

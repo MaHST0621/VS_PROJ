@@ -91,8 +91,6 @@ int main()
                     file.read(send_buff,1024);
                     Server.make_pak(g_count_id,send_buff);
                     send_num = sendto(sock_fd, Server.Send_buff, g_pack_length, 0, (struct sockaddr *)&addr_client, len);  
-
-                    Server.output_head((char*)Server.Send_buff);
                     if(send_num < 0)
                     {
                         printf("%d号包发送报错！！\n",Server.get_id(Server.Send_buff));
@@ -109,7 +107,6 @@ int main()
                 usleep(1500000);
                 while(g_total_window == 0)
                 {
-                    sleep(5);
                     printf("%d号包超时\n",g_shave_id + 1);
                     if(g_shave_id == g_totalpackage)
                     {
@@ -135,7 +132,7 @@ int main()
         }  
     finish_t = clock();
     duration = (double)(finish_t - start_t) / 1000;  
-    cout<<"吞吐率为："<<(double)(duration / (length*8));
+    cout<<"吞吐率为："<<(double)(duration / g_out_pack);
     exit(1);
     close(sock_fd);  
             

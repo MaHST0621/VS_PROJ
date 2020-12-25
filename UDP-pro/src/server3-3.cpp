@@ -166,7 +166,7 @@ int main()
         }  
     finish_t = clock();
     duration = (double)(finish_t - start_t) / 1000;  
-    cout<<"吞吐率为："<<(double)(duration / (length*8));
+    cout<<"吞吐率为："<<(double)(duration / g_out_pack);
     exit(1);
     close(sock_fd);  
             
